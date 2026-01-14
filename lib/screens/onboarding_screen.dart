@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
 import 'login_screen.dart';
 
 class OnboardingScreen extends StatelessWidget {
@@ -7,100 +6,27 @@ class OnboardingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Cores extraídas da imagem
-    final Color primaryRed = const Color(0xFF9A202F); // Vinho
-    final Color darkBlue = const Color(0xFF2C3E50);   // Azul escuro/Cinza do fundo
+    // Cores
+    final Color primaryRed = const Color(0xFF9A202F);
+    final Color darkBlue = const Color(0xFF2C3E50);
 
     return Scaffold(
-      // O fundo geral é o gradiente superior
-      backgroundColor: darkBlue,
+      backgroundColor: darkBlue, // Cor de fundo de segurança
       body: Column(
         children: [
-          // --- METADE SUPERIOR (Escura com Logo e Ícone) ---
+          // --- METADE SUPERIOR (Apenas a Imagem) ---
           Expanded(
-            flex: 6, // Ocupa 60% da tela (ajustável)
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                // Simulação do fundo geométrico com Gradiente Linear
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    darkBlue,
-                    primaryRed.withOpacity(0.8), // Mistura um pouco do vermelho
-                    darkBlue,
-                  ],
-                ),
-                // SE VOCÊ TIVER A IMAGEM DE FUNDO, DESCOMENTE ABAIXO:
-                /*
-                image: DecorationImage(
-                  image: AssetImage('assets/images/fundo_triangulos.png'),
-                  fit: BoxFit.cover,
-                ),
-                */
-              ),
-              child: SafeArea(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo ICEA Pequena no topo
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('icea', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Futura')),
-                        const SizedBox(width: 8),
-                        Text('Instituto de Ciências\nExatas e Aplicadas', style: TextStyle(color: Colors.white70, fontSize: 10)),
-                      ],
-                    ),
-
-                    const Spacer(),
-
-                    // Texto SECOMP
-                    Text(
-                      'SECOMP',
-                      style: TextStyle(
-                        color: primaryRed, // Texto em vermelho escuro sobre o fundo
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-
-                    // Texto Agendamentos
-                    const Text(
-                      'Agendamentos',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Ícone de Calendário (Simulando a imagem)
-                    Container(
-                      height: 120,
-                      width: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1), // Fundo leve atrás do ícone
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.calendar_month_outlined, // Ícone de calendário
-                        size: 80,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const Spacer(),
-                  ],
-                ),
+            flex: 6, // Ocupa 60% da tela
+            child: SizedBox(
+              width: double.infinity, // Garante que ocupa a largura toda
+              child: Image.asset(
+                'public/calendario.png', // Certifique-se que esta imagem está na pasta e no pubspec
+                fit: BoxFit.cover, // Cobre todo o espaço (corta excessos se necessário)
               ),
             ),
           ),
 
-          // --- METADE INFERIOR (Branca com Texto e Botão) ---
+          // --- METADE INFERIOR (Quadrado Branco com Infos) ---
           Expanded(
             flex: 4, // Ocupa 40% da tela
             child: Container(
@@ -122,7 +48,7 @@ class OnboardingScreen extends StatelessWidget {
                       'Organize sua\nconferência',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontFamily: 'Times New Roman', // Fonte serifada
+                        fontFamily: 'Times New Roman',
                         fontSize: 32,
                         color: primaryRed,
                         height: 1.1,
@@ -140,16 +66,6 @@ class OnboardingScreen extends StatelessWidget {
                       ),
                     ),
 
-                    // Indicador de Páginas (Bolinhas)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildDot(isActive: true, color: primaryRed),
-                        _buildDot(isActive: false, color: primaryRed),
-                        _buildDot(isActive: false, color: primaryRed),
-                      ],
-                    ),
-
                     // Botão INICIAR
                     SizedBox(
                       width: double.infinity,
@@ -165,7 +81,6 @@ class OnboardingScreen extends StatelessWidget {
                         onPressed: () {
                           Navigator.push(
                             context,
-
                             MaterialPageRoute(builder: (context) => const LoginScreen()),
                           );
                         },
@@ -177,7 +92,6 @@ class OnboardingScreen extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-
                       ),
                     ),
                   ],
@@ -195,7 +109,7 @@ class OnboardingScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       height: 8,
-      width: isActive ? 30 : 8, // Se ativo é largo, se não é bolinha
+      width: isActive ? 30 : 8,
       decoration: BoxDecoration(
         color: isActive ? color : color.withOpacity(0.3),
         borderRadius: BorderRadius.circular(4),
