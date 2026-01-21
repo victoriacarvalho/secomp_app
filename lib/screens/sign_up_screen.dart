@@ -75,31 +75,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               // --- BOTÃO LOGIN (CADASTRAR) ---
               _buildSubmitButton(),
 
-              const SizedBox(height: 25),
-
-              // --- LINK PARA LOGIN ---
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Não tem uma conta? ', style: TextStyle(color: textGrey)),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Text('Criar conta', style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Center(child: Text('Ou conecte-se', style: TextStyle(color: textGrey, fontSize: 14))),
-
-              const SizedBox(height: 25),
-
-              // --- BOTÕES SOCIAIS ---
-              _buildSocialButtons(),
-
               const SizedBox(height: 20),
             ],
           ),
@@ -170,24 +145,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         onPressed: () {},
         child: const Text(
-          'Login', // Mantido conforme imagem enviada, embora seja uma tela de cadastro
+          'Cadastrar',
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  Widget _buildSocialButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _socialIcon('public/facebook.png'), // Certifique-se de ter as imagens
-        const SizedBox(width: 20),
-        _socialIcon('public/instagram.png'),
-
-      ],
-    );
-  }
 
   Widget _socialIcon(String assetPath) {
     return Container(
