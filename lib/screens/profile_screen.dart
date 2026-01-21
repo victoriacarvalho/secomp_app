@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'settings_screen.dart';
 import 'manage_events_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -144,9 +143,7 @@ class ProfileScreen extends StatelessWidget {
                     // -------------------------------
 
                     _buildDividerLine(),
-                    _buildMenuItem(Icons.settings_outlined, "Configurações", onTap: (){
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-                    }),
+
                     _buildDividerLine(),
                     _buildMenuItem(Icons.public, "Sobre", onTap: (){}),
                   ],

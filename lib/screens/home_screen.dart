@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+
+// Imports das telas do projeto
 import 'event_detail_screen.dart';
 import 'all_events_screen.dart';
 import 'diary_screen.dart';
 import 'certificates_screen.dart';
 import 'profile_screen.dart';
+import 'notification_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -48,7 +51,8 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    _buildNotificationIcon(),
+                    // Passamos o context para o ícone funcionar a navegação
+                    _buildNotificationIcon(context),
                   ],
                 ),
 
@@ -68,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 30),
 
                 // ============================================================
-                // 1. SEÇÃO DE SUGESTÕES (Já existia)
+                // 1. SEÇÃO DE SUGESTÕES
                 // ============================================================
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -83,7 +87,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        // Pode levar para uma lista específica de sugestões se quiser
+                        // Ação opcional para ver mais sugestões
                       },
                       child: Text(
                         'Ver tudo',
@@ -122,7 +126,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 30),
 
                 // ============================================================
-                // 2. NOVA SEÇÃO: EVENTOS POPULARES
+                // 2. SEÇÃO: EVENTOS POPULARES
                 // ============================================================
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -153,7 +157,7 @@ class HomeScreen extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                // Nova Lista Horizontal (Eventos Populares)
+                // Lista Horizontal Eventos Populares
                 SizedBox(
                   height: 330,
                   child: ListView(
@@ -164,7 +168,7 @@ class HomeScreen extends StatelessWidget {
                         title: 'Mineração de dados',
                         location: 'Sala C203',
                         points: '30',
-                        imagePath: 'public/campus.png', // Trocamos a imagem aqui se tiver outra
+                        imagePath: 'public/campus.png',
                       ),
                       _buildSuggestionCard(
                         context,
@@ -184,8 +188,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
 
-                // Espaço extra no final para não ficar colado na barra inferior
-                const SizedBox(height: 20),
+                const SizedBox(height: 20), // Espaço extra no final
               ],
             ),
           ),
@@ -198,30 +201,38 @@ class HomeScreen extends StatelessWidget {
 
   // --- WIDGETS AUXILIARES ---
 
-  Widget _buildNotificationIcon() {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: backgroundGrey,
-        shape: BoxShape.circle,
-      ),
-      child: Stack(
-        children: [
-          const Icon(Icons.notifications_none_outlined, size: 28),
-          Positioned(
-            right: 2,
-            top: 2,
-            child: Container(
-              height: 10,
-              width: 10,
-              decoration: BoxDecoration(
-                color: Colors.orange,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+  Widget _buildNotificationIcon(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NotificationScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: backgroundGrey,
+          shape: BoxShape.circle,
+        ),
+        child: Stack(
+          children: [
+            const Icon(Icons.notifications_none_outlined, size: 28),
+            Positioned(
+              right: 2,
+              top: 2,
+              child: Container(
+                height: 10,
+                width: 10,
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
               ),
-            ),
-          )
-        ],
+            )
+          ],
+        ),
       ),
     );
   }
@@ -353,7 +364,10 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// --- BARRA INFERIOR PADRONIZADA ---
+// ============================================================
+// BARRA INFERIOR PADRONIZADA (CustomBottomBar)
+// ============================================================
+
 class CustomBottomBar extends StatelessWidget {
   const CustomBottomBar({super.key});
 
@@ -374,17 +388,17 @@ class CustomBottomBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Botão INÍCIO
+          // 1. Botão INÍCIO (Ativo)
           _buildNavItem(
               Icons.home_outlined,
               "Início",
-              true, // Ativo
+              true,
               onTap: () {
                 // Já na home
               }
           ),
 
-          // Botão AGENDA
+          // 2. Botão AGENDA
           _buildNavItem(
               Icons.calendar_month,
               "Agenda",
@@ -397,7 +411,7 @@ class CustomBottomBar extends StatelessWidget {
               }
           ),
 
-          // Botão BUSCA
+          // 3. Botão BUSCA (Destaque)
           GestureDetector(
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Busca clicada")));
@@ -415,7 +429,7 @@ class CustomBottomBar extends StatelessWidget {
             ),
           ),
 
-          // Botão CERTIFICADOS
+          // 4. Botão CERTIFICADOS
           _buildNavItem(
               Icons.chat_bubble_outline,
               "Certificados",
@@ -428,13 +442,12 @@ class CustomBottomBar extends StatelessWidget {
               }
           ),
 
-          // Botão PERFIL
+          // 5. Botão PERFIL
           _buildNavItem(
               Icons.person_outline,
               "Perfil",
               false,
               onTap: () {
-
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ProfileScreen()),
@@ -450,7 +463,7 @@ class CustomBottomBar extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        color: Colors.transparent,
+        color: Colors.transparent, // Aumenta a área de toque
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
