@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'event_detail_screen.dart';
-import 'diary_screen.dart';
 import 'all_events_screen.dart';
+import 'diary_screen.dart';
+import 'certificates_screen.dart';
+
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -14,7 +16,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
 
       body: SafeArea(
         child: SingleChildScrollView(
@@ -79,7 +80,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -125,17 +125,9 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
 
-      // --- BARRA DE NAVEGAÇÃO CUSTOMIZADA ---
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: primaryRed,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.search, color: Colors.white, size: 30),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      // ERRO CORRIGIDO: Passamos o (context) aqui e mantivemos apenas esta chamada
-      bottomNavigationBar: _buildBottomBar(context),
+      // --- BARRA DE NAVEGAÇÃO PADRONIZADA ---
+      // Agora usa a mesma classe das outras telas
+      bottomNavigationBar: const CustomBottomBar(),
     );
   }
 
@@ -188,63 +180,6 @@ class HomeScreen extends StatelessWidget {
           errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
         ),
       ],
-    );
-  }
-
-  // ERRO CORRIGIDO: Adicionamos BuildContext context como parâmetro obrigatório
-  Widget _buildBottomBar(BuildContext context) {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(Icons.home_outlined, 'Início', isSelected: true),
-
-            // Item Agenda com navegação
-            _buildNavItem(
-              Icons.calendar_month_outlined,
-              'Agenda',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AgendaScreen()),
-                );
-              },
-            ),
-
-            const SizedBox(width: 40),
-            _buildNavItem(Icons.chat_bubble_outline, 'Certificados'),
-            _buildNavItem(Icons.person_outline, 'Perfil'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, {bool isSelected = false, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        color: Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: isSelected ? primaryRed : Colors.grey),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isSelected ? primaryRed : Colors.grey,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -344,6 +279,123 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- BARRA INFERIOR PADRONIZADA ---
+// (Adicionada aqui para garantir que funcione igual às telas de Agenda e Certificados)
+class CustomBottomBar extends StatelessWidget {
+  const CustomBottomBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -5)
+          )
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          // Botão INÍCIO (Ativo, pois estamos na Home)
+          _buildNavItem(
+              Icons.home_outlined,
+              "Início",
+              true, // Ativo
+              onTap: () {
+                // Já estamos na home, não faz nada ou scroll to top
+              }
+          ),
+
+          // Botão AGENDA
+          _buildNavItem(
+              Icons.calendar_month,
+              "Agenda",
+              false,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AgendaScreen()),
+                );
+              }
+          ),
+
+          // Botão BUSCA (Destaque Central)
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Busca clicada")));
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFA93244),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Color(0x40A93244), blurRadius: 10, offset: Offset(0, 5))
+                ],
+              ),
+              child: const Icon(Icons.search, color: Colors.white, size: 30),
+            ),
+          ),
+
+          // Botão CERTIFICADOS
+          _buildNavItem(
+              Icons.chat_bubble_outline,
+              "Certificados",
+              false,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CertificatesScreen()),
+                );
+              }
+          ),
+
+          // Botão PERFIL
+          _buildNavItem(
+              Icons.person_outline,
+              "Perfil",
+              false,
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Perfil clicado")));
+              }
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        color: Colors.transparent, // Aumenta área de toque
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isActive ? const Color(0xFFA93244) : Colors.grey, size: 26),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                  color: isActive ? const Color(0xFFA93244) : Colors.grey,
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal
               ),
             ),
           ],
