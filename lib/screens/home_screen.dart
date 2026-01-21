@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'event_detail_screen.dart';
-import 'diary_screen.dart'; // Certifique-se que este arquivo existe em lib/screens/
+import 'diary_screen.dart';
+import 'all_events_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -13,7 +14,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // ERRO CORRIGIDO: Removemos o bottomNavigationBar que estava duplicado aqui no topo
+
 
       body: SafeArea(
         child: SingleChildScrollView(
@@ -78,7 +79,13 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {},
+
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AllEventsScreen()),
+                        );
+                      },
                       child: Text(
                         'Ver tudo',
                         style: TextStyle(color: primaryRed, fontSize: 16),
@@ -91,7 +98,7 @@ class HomeScreen extends StatelessWidget {
 
                 // --- LISTA HORIZONTAL DE CARDS ---
                 SizedBox(
-                  height: 400,
+                  height: 330,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
