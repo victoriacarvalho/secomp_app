@@ -3,7 +3,7 @@ import 'event_detail_screen.dart';
 import 'all_events_screen.dart';
 import 'diary_screen.dart';
 import 'certificates_screen.dart';
-
+import 'profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -65,9 +65,11 @@ class HomeScreen extends StatelessWidget {
                 ),
                 _buildSecompTitle(),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
 
-                // --- SEÇÃO DE SUGESTÕES ---
+                // ============================================================
+                // 1. SEÇÃO DE SUGESTÕES (Já existia)
+                // ============================================================
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -81,10 +83,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AllEventsScreen()),
-                        );
+                        // Pode levar para uma lista específica de sugestões se quiser
                       },
                       child: Text(
                         'Ver tudo',
@@ -96,7 +95,7 @@ class HomeScreen extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                // --- LISTA HORIZONTAL DE CARDS ---
+                // Lista Horizontal Sugestões
                 SizedBox(
                   height: 330,
                   child: ListView(
@@ -119,14 +118,80 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                const SizedBox(height: 30),
+
+                // ============================================================
+                // 2. NOVA SEÇÃO: EVENTOS POPULARES
+                // ============================================================
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Eventos Populares',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        // Navega para a tela de Grid (AllEventsScreen)
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AllEventsScreen()),
+                        );
+                      },
+                      child: Text(
+                        'Ver tudo',
+                        style: TextStyle(color: primaryRed, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                // Nova Lista Horizontal (Eventos Populares)
+                SizedBox(
+                  height: 330,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildSuggestionCard(
+                        context,
+                        title: 'Mineração de dados',
+                        location: 'Sala C203',
+                        points: '30',
+                        imagePath: 'public/campus.png', // Trocamos a imagem aqui se tiver outra
+                      ),
+                      _buildSuggestionCard(
+                        context,
+                        title: 'Análise de dados',
+                        location: 'Sala H102',
+                        points: '25',
+                        imagePath: 'public/campus.png',
+                      ),
+                      _buildSuggestionCard(
+                        context,
+                        title: 'Avanço da IA',
+                        location: 'Auditório',
+                        points: '60',
+                        imagePath: 'public/campus.png',
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Espaço extra no final para não ficar colado na barra inferior
+                const SizedBox(height: 20),
               ],
             ),
           ),
         ),
       ),
 
-      // --- BARRA DE NAVEGAÇÃO PADRONIZADA ---
-      // Agora usa a mesma classe das outras telas
       bottomNavigationBar: const CustomBottomBar(),
     );
   }
@@ -289,7 +354,6 @@ class HomeScreen extends StatelessWidget {
 }
 
 // --- BARRA INFERIOR PADRONIZADA ---
-// (Adicionada aqui para garantir que funcione igual às telas de Agenda e Certificados)
 class CustomBottomBar extends StatelessWidget {
   const CustomBottomBar({super.key});
 
@@ -310,13 +374,13 @@ class CustomBottomBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Botão INÍCIO (Ativo, pois estamos na Home)
+          // Botão INÍCIO
           _buildNavItem(
               Icons.home_outlined,
               "Início",
               true, // Ativo
               onTap: () {
-                // Já estamos na home, não faz nada ou scroll to top
+                // Já na home
               }
           ),
 
@@ -333,7 +397,7 @@ class CustomBottomBar extends StatelessWidget {
               }
           ),
 
-          // Botão BUSCA (Destaque Central)
+          // Botão BUSCA
           GestureDetector(
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Busca clicada")));
@@ -370,7 +434,11 @@ class CustomBottomBar extends StatelessWidget {
               "Perfil",
               false,
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Perfil clicado")));
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
               }
           ),
         ],
@@ -382,7 +450,7 @@ class CustomBottomBar extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        color: Colors.transparent, // Aumenta área de toque
+        color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

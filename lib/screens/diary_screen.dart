@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'event_detail_screen.dart'; // Certifique-se de que este arquivo existe
+import 'event_detail_screen.dart';
+import 'certificates_screen.dart';
+import 'profile_screen.dart';
 
 class AgendaScreen extends StatelessWidget {
   const AgendaScreen({super.key});
@@ -316,7 +318,7 @@ class EventCard extends StatelessWidget {
   }
 }
 
-// --- BARRA INFERIOR CUSTOMIZADA ---
+// --- BARRA INFERIOR PADRONIZADA ---
 class CustomBottomBar extends StatelessWidget {
   const CustomBottomBar({super.key});
 
@@ -337,16 +339,28 @@ class CustomBottomBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Botão INÍCIO: Volta para a tela anterior (Home)
+          // Botão INÍCIO
           _buildNavItem(
-            Icons.home_outlined,
-            "Início",
-            false,
-            onTap: () => Navigator.pop(context),
+              Icons.home_outlined,
+              "Início",
+              false,
+              onTap: () {
+                // Já na home
+              }
           ),
 
-          // Botão AGENDA: Ativo (sem ação pois já estamos aqui)
-          _buildNavItem(Icons.calendar_month, "Agenda", true),
+          // Botão AGENDA
+          _buildNavItem(
+              Icons.calendar_month,
+              "Agenda",
+              true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AgendaScreen()),
+                );
+              }
+          ),
 
           // Botão BUSCA
           GestureDetector(
@@ -368,24 +382,34 @@ class CustomBottomBar extends StatelessWidget {
 
           // Botão CERTIFICADOS
           _buildNavItem(
-            Icons.chat_bubble_outline,
-            "Certificados",
-            false,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Certificados"))),
+              Icons.chat_bubble_outline,
+              "Certificados",
+              false,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CertificatesScreen()),
+                );
+              }
           ),
 
           // Botão PERFIL
           _buildNavItem(
-            Icons.person_outline,
-            "Perfil",
-            false,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Perfil"))),
+              Icons.person_outline,
+              "Perfil",
+              false,
+              onTap: () {
+                // Navega para a tela de Perfil
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              }
           ),
         ],
       ),
     );
   }
-
   Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
