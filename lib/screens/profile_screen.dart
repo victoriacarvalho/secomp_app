@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'settings_screen.dart';
+import 'manage_events_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
 
@@ -126,8 +128,10 @@ class ProfileScreen extends StatelessWidget {
                       _buildMenuItem(
                           Icons.admin_panel_settings_outlined,
                           "Gerenciar Eventos",
-                          isHighlight: true, // Destaque visual
-                          onTap: (){}
+                          isHighlight: true,
+                          onTap: (){
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen()));
+                          }
                       ),
                       _buildDividerLine(),
                       _buildMenuItem(
@@ -140,7 +144,9 @@ class ProfileScreen extends StatelessWidget {
                     // -------------------------------
 
                     _buildDividerLine(),
-                    _buildMenuItem(Icons.settings_outlined, "Configurações", onTap: (){}),
+                    _buildMenuItem(Icons.settings_outlined, "Configurações", onTap: (){
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+                    }),
                     _buildDividerLine(),
                     _buildMenuItem(Icons.public, "Sobre", onTap: (){}),
                   ],
