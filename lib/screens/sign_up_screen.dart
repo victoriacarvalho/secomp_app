@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../servicos/autenticacao_servico.dart'; // Importando o seu serviço
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -8,11 +9,81 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  // Cores extraídas da sua identidade visual
+  
   final Color primaryRed = const Color(0xFF9A202F);
   final Color lightGreyBackground = const Color(0xFFF3F5F7);
   final Color textGrey = const Color(0xFF666666);
+  final Color linkBlue = const Color(0xFF607D8B); // Cor azul acinzentada das imagens
+
+
+  final AutenticacaoServico _authService = AutenticacaoServico();
+  final TextEditingController _nomeController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _senhaController = TextEditingController();
+
+  // --- ESTADOS ---
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nomeController.dispose();
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
+  }
+
+  // --- LÓGICA DE CADASTRO ---
+  void _validarCadastro() async {
+    String nome = _nomeController.text.trim();
+    String email = _emailController.text.trim();
+    String senha = _senhaController.text;
+
+    // Validações UFOP
+    if (nome.isEmpty || email.isEmpty || senha.isEmpty) {
+      _notificacao("Por favor, preencha todos os campos.", erro: true);
+      return;
+    }
+
+    if (!email.endsWith("@aluno.ufop.edu.br")) {
+      _notificacao("Use seu e-mail institucional @aluno.ufop.edu.br", erro: true);
+      return;
+    }
+
+    if (senha.length < 8 || 
+        !senha.contains(RegExp(r'[A-Z]')) || 
+        !senha.contains(RegExp(r'[0-9]'))) {
+      _notificacao("Senha inválida: use 8 caracteres, uma letra maiúscula e um número.", erro: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    String? resultado = await _authService.cadastrarUsuario(
+      nome: nome,
+      email: email,
+      senha: senha,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (resultado != null) {
+      _notificacao(resultado, erro: true);
+    } else {
+      _notificacao("Conta criada com sucesso!");
+    }
+  }
+
+  void _notificacao(String mensagem, {bool erro = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        backgroundColor: erro ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,13 +96,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-
-              // --- BOTÃO VOLTAR ---
               _buildBackButton(context),
-
               const SizedBox(height: 30),
 
-              // --- CABEÇALHO ---
+              // CABEÇALHO
               Center(
                 child: Column(
                   children: [
@@ -55,26 +123,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               const SizedBox(height: 40),
 
-              // --- CAMPOS DE ENTRADA ---
-              _buildTextField(hint: 'Leonardo Smith'),
+              // CAMPOS DE ENTRADA
+              _buildTextField(hint: 'Nome Completo', controller: _nomeController),
               const SizedBox(height: 15),
-              _buildTextField(hint: 'www.uihut@gmail.com', type: TextInputType.emailAddress),
+              _buildTextField(
+                hint: 'exemplo@aluno.ufop.edu.br',
+                type: TextInputType.emailAddress,
+                controller: _emailController,
+              ),
               const SizedBox(height: 15),
               _buildPasswordField(),
 
-              const Padding(
-                padding: EdgeInsets.only(top: 8, left: 4),
-                child: Text(
-                  'Insira ao menos 8 caracteres',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ),
+              const SizedBox(height: 40),
 
-              const SizedBox(height: 30),
-
-              // --- BOTÃO LOGIN (CADASTRAR) ---
               _buildSubmitButton(),
 
+              const SizedBox(height: 25),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Já tem uma conta? ",
+                    style: TextStyle(
+                      color: textGrey, 
+                      fontSize: 16,
+                      fontFamily: 'sans-serif',
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Text(
+                      "conecte-se", 
+                      style: TextStyle(
+                        color: primaryRed, 
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'sans-serif',
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
             ],
           ),
@@ -82,8 +173,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
     );
   }
-
-  // --- WIDGETS AUXILIARES ---
 
   Widget _buildBackButton(BuildContext context) {
     return InkWell(
@@ -97,10 +186,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildTextField({required String hint, TextInputType type = TextInputType.text}) {
+  Widget _buildTextField({
+    required String hint,
+    TextInputType type = TextInputType.text,
+    required TextEditingController controller,
+  }) {
     return Container(
       decoration: BoxDecoration(color: lightGreyBackground, borderRadius: BorderRadius.circular(12)),
       child: TextField(
+        controller: controller,
         keyboardType: type,
         style: const TextStyle(fontSize: 16),
         decoration: InputDecoration(
@@ -117,11 +211,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Container(
       decoration: BoxDecoration(color: lightGreyBackground, borderRadius: BorderRadius.circular(12)),
       child: TextField(
+        controller: _senhaController,
         obscureText: !_isPasswordVisible,
         style: const TextStyle(fontSize: 16),
         decoration: InputDecoration(
-          hintText: '**********',
-          hintStyle: TextStyle(color: Colors.grey[500]),
+          hintText: 'Senha (8+ caracteres, A-Z, 0-9)',
+          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
           suffixIcon: IconButton(
             icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
             onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
@@ -143,22 +238,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           elevation: 0,
         ),
-        onPressed: () {},
-        child: const Text(
-          'Cadastrar',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        onPressed: _isLoading ? null : _validarCadastro,
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text(
+                'Cadastrar',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
       ),
-    );
-  }
-
-
-  Widget _socialIcon(String assetPath) {
-    return Container(
-      height: 55,
-      width: 55,
-      decoration: const BoxDecoration(shape: BoxShape.circle),
-      child: Image.asset(assetPath),
     );
   }
 }
