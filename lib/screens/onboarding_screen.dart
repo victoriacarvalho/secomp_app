@@ -6,113 +6,104 @@ class OnboardingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Cores
-    final Color primaryRed = const Color(0xFF9A202F);
-    final Color darkBlue = const Color(0xFF2C3E50);
+    const Color primaryRed = Color(0xFF9A202F);
 
     return Scaffold(
-      backgroundColor: darkBlue, // Cor de fundo de segurança
-      body: Column(
+      backgroundColor: Colors.white,
+      body: Stack(
         children: [
-          // --- METADE SUPERIOR (Apenas a Imagem) ---
-          Expanded(
-            flex: 6, // Ocupa 60% da tela
-            child: SizedBox(
-              width: double.infinity, // Garante que ocupa a largura toda
-              child: Image.asset(
-                'public/calendario.png', // Certifique-se que esta imagem está na pasta e no pubspec
-                fit: BoxFit.cover, // Cobre todo o espaço (corta excessos se necessário)
-              ),
+          // 1. Imagem de Fundo (Topo)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            // Aumentamos levemente a altura para garantir que o corte da imagem 
+            // no encontro com o branco fique no ponto ideal do design
+            height: MediaQuery.of(context).size.height * 0.60, 
+            child: Image.asset(
+              'assets/images/onboarding_bg.png',
+              // BoxFit.cover garante que a imagem preencha o espaço sem sobras
+              fit: BoxFit.cover, 
+              alignment: Alignment.topCenter, // Mantém o foco no topo da imagem
+              errorBuilder: (context, error, stackTrace) => Container(color: primaryRed),
             ),
           ),
 
-          // --- METADE INFERIOR (Quadrado Branco com Infos) ---
-          Expanded(
-            flex: 4, // Ocupa 40% da tela
+          // 2. Painel Branco (Base)
+          Align(
+            alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
+              // Ajustado para encontrar a imagem perfeitamente
+              height: MediaQuery.of(context).size.height * 0.42, 
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
               decoration: const BoxDecoration(
-                color: Color(0xFFF5F5F5), // Branco gelo
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
+                color: Colors.white,
+                // Sem Border Radius conforme sua preferência anterior para encostar nas bordas
+                borderRadius: BorderRadius.zero, 
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(30.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Título
-                    Text(
-                      'Organize sua\nconferência',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Times New Roman',
-                        fontSize: 32,
-                        color: primaryRed,
-                        height: 1.1,
-                      ),
-                    ),
-
-                    // Descrição
-                    const Text(
-                      'Faça login e conheça nossas ferramentas disponíveis para facilitar a organização do seu evento.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                        height: 1.5,
-                      ),
-                    ),
-
-                    // Botão INICIAR
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryRed,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          elevation: 5,
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
-                          );
-                        },
-                        child: const Text(
-                          'Iniciar',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    children: [
+                      const Text(
+                        "Organize sua\nconferência",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Times New Roman',
+                          fontSize: 32,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                          height: 1.1,
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "Faça login e conheça nossas ferramentas disponíveis para facilitar a organização do seu evento.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black45,
+                          fontFamily: 'sans-serif',
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  // Botão Iniciar
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        );
+                      },
+                      child: const Text(
+                        "Iniciar",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // Widget auxiliar para fazer as bolinhas (dots)
-  Widget _buildDot({required bool isActive, required Color color}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      height: 8,
-      width: isActive ? 30 : 8,
-      decoration: BoxDecoration(
-        color: isActive ? color : color.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(4),
       ),
     );
   }
