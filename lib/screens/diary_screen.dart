@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import '../servicos/autenticacao_servico.dart';
 import 'event_detail_screen.dart';
 import 'certificates_screen.dart';
 import 'profile_screen.dart';
@@ -9,51 +12,39 @@ class AgendaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD), // Cor de fundo suave
+      backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        // --- 1. BOTÃO DE VOLTAR (Topo) ---
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context); // Fecha a tela atual e volta para a Home
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Agenda",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black),
         ),
         actions: [
-          // --- 2. BOTÃO DE NOTIFICAÇÕES ---
           IconButton(
             icon: const Icon(Icons.notifications_none_outlined, size: 28, color: Colors.black),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Sem novas notificações")),
-              );
-            },
+            onPressed: () {},
           ),
           const SizedBox(width: 10),
         ],
       ),
-
-      // --- BARRA INFERIOR REINTEGRADA ---
       bottomNavigationBar: const CustomBottomBar(),
-
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- 3. CALENDÁRIO INTERATIVO ---
+              // CORREÇÃO: Removido o 'const' aqui
               const CalendarStrip(),
 
               const SizedBox(height: 30),
 
-              // Cabeçalho da Lista
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -61,44 +52,64 @@ class AgendaScreen extends StatelessWidget {
                     "Meus eventos",
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                  // --- 4. BOTÃO VER TUDO ---
                   TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Carregando lista completa...")),
-                      );
-                    },
-                    child: const Text(
-                      "Ver tudo",
-                      style: TextStyle(color: Color(0xFFA93244)),
-                    ),
+                    onPressed: () {},
+                    child: const Text("Ver tudo", style: TextStyle(color: Color(0xFFA93244))),
                   )
                 ],
               ),
-
               const SizedBox(height: 10),
 
-              // --- 5. CARDS COM NAVEGAÇÃO ---
-              const EventCard(
-                title: "Gestão de Carreira",
-                date: "26 Janeiro 2026",
-                location: "Auditório ICEA",
-                imageUrl: "https://picsum.photos/200/200?random=1",
-                points: "60",
-              ),
-              const EventCard(
-                title: "Instalação DEBIAN",
-                date: "26 Fevereiro 2026",
-                location: "Sala H102",
-                imageUrl: "https://picsum.photos/200/200?random=2",
-                points: "40",
-              ),
-              const EventCard(
-                title: "Mineração de dados",
-                date: "26 Março 2026",
-                location: "Sala C203",
-                imageUrl: "https://picsum.photos/200/200?random=3",
-                points: "80",
+              // --- LISTA DE EVENTOS DO BANCO ---
+              StreamBuilder<QuerySnapshot>(
+                stream: AutenticacaoServico().getEventos(),
+                builder: (context, snapshot) {
+                  // 1. Carregando
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: CircularProgressIndicator(color: Color(0xFFA93244)),
+                        )
+                    );
+                  }
+
+                  // 2. Sem dados
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text("Nenhum evento encontrado na agenda.", style: TextStyle(color: Colors.grey)),
+                      ),
+                    );
+                  }
+
+                  var docs = snapshot.data!.docs;
+
+                  // 3. Lista de Cards
+                  return Column(
+                    children: docs.map((doc) {
+                      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+                      // Formatação da Data (Timestamp -> String)
+                      String dataExibicao = "--/--";
+                      if (data['data'] != null) {
+                        try {
+                          Timestamp ts = data['data'];
+                          // Ex: "26 Fevereiro 2026"
+                          dataExibicao = DateFormat("dd MMMM yyyy", "pt_BR").format(ts.toDate());
+                        } catch (e) {
+                          dataExibicao = "Data Inválida";
+                        }
+                      }
+
+                      return EventCard(
+                        eventData: data,
+                        displayDate: dataExibicao,
+                      );
+                    }).toList(),
+                  );
+                },
               ),
             ],
           ),
@@ -112,7 +123,6 @@ class AgendaScreen extends StatelessWidget {
 // WIDGETS AUXILIARES
 // ---------------------------------------------------------------------------
 
-// Calendário agora é Stateful para gerenciar qual dia está clicado
 class CalendarStrip extends StatefulWidget {
   const CalendarStrip({super.key});
 
@@ -121,10 +131,8 @@ class CalendarStrip extends StatefulWidget {
 }
 
 class _CalendarStripState extends State<CalendarStrip> {
-  // Índice inicial (Dia 22 selecionado)
-  int _selectedIndex = 4;
+  int _selectedIndex = 4; // Simula o dia atual selecionado
 
-  // Dados dos dias
   final List<Map<String, String>> _days = [
     {'day': 'S', 'date': '18'},
     {'day': 'M', 'date': '19'},
@@ -152,32 +160,19 @@ class _CalendarStripState extends State<CalendarStrip> {
       ),
       child: Column(
         children: [
-          // Cabeçalho do Mês
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("22 Outubro", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("Outubro 2026", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: () {
-                      // Lógica futura
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: () {
-                      // Lógica futura
-                    },
-                  ),
+                  IconButton(icon: const Icon(Icons.chevron_left), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.chevron_right), onPressed: () {}),
                 ],
               )
             ],
           ),
           const SizedBox(height: 20),
-
-          // Lista Horizontal de Dias
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(_days.length, (index) {
@@ -237,19 +232,13 @@ class DayItem extends StatelessWidget {
 }
 
 class EventCard extends StatelessWidget {
-  final String title;
-  final String date;
-  final String location;
-  final String imageUrl;
-  final String points;
+  final Map<String, dynamic> eventData;
+  final String displayDate;
 
   const EventCard({
     super.key,
-    required this.title,
-    required this.date,
-    required this.location,
-    required this.imageUrl,
-    this.points = "50",
+    required this.eventData,
+    required this.displayDate,
   });
 
   @override
@@ -259,12 +248,7 @@ class EventCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => EventDetailScreen(
-              title: title,
-              location: location,
-              points: points,
-              imagePath: 'public/campus.png',
-            ),
+            builder: (context) => EventDetailScreen(eventData: eventData),
           ),
         );
       },
@@ -280,11 +264,27 @@ class EventCard extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Imagem do Evento
             ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.network(imageUrl, width: 70, height: 70, fit: BoxFit.cover),
+              child: Image.network(
+                eventData['imageUrl'] != null && eventData['imageUrl'].toString().isNotEmpty
+                    ? eventData['imageUrl']
+                    : 'https://via.placeholder.com/150', // Imagem padrão se nulo
+                width: 70,
+                height: 70,
+                fit: BoxFit.cover,
+                errorBuilder: (ctx, err, stack) => Container(
+                  width: 70,
+                  height: 70,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                ),
+              ),
             ),
             const SizedBox(width: 15),
+
+            // Informações do Evento
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,18 +293,28 @@ class EventCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey),
                       const SizedBox(width: 5),
-                      Text(date, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text(displayDate, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
                   const SizedBox(height: 5),
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    eventData['titulo'] ?? 'Sem título',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 5),
                   Row(
                     children: [
                       const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
                       const SizedBox(width: 5),
-                      Text(location, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      const Spacer(),
+                      Expanded(
+                        child: Text(
+                          eventData['isOnline'] == true ? "Online" : (eventData['local'] ?? 'A definir'),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                       const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
                     ],
                   ),
@@ -318,7 +328,6 @@ class EventCard extends StatelessWidget {
   }
 }
 
-// --- BARRA INFERIOR PADRONIZADA ---
 class CustomBottomBar extends StatelessWidget {
   const CustomBottomBar({super.key});
 
@@ -339,34 +348,12 @@ class CustomBottomBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Botão INÍCIO
-          _buildNavItem(
-              Icons.home_outlined,
-              "Início",
-              false,
-              onTap: () {
-                // Já na home
-              }
-          ),
-
-          // Botão AGENDA
-          _buildNavItem(
-              Icons.calendar_month,
-              "Agenda",
-              true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AgendaScreen()),
-                );
-              }
-          ),
-
-          // Botão BUSCA
+          _buildNavItem(Icons.home_outlined, "Início", false, onTap: () {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }),
+          _buildNavItem(Icons.calendar_month, "Agenda", true, onTap: () {}),
           GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Busca clicada")));
-            },
+            onTap: () {},
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: const BoxDecoration(
@@ -379,42 +366,22 @@ class CustomBottomBar extends StatelessWidget {
               child: const Icon(Icons.search, color: Colors.white, size: 30),
             ),
           ),
-
-          // Botão CERTIFICADOS
-          _buildNavItem(
-              Icons.chat_bubble_outline,
-              "Certificados",
-              false,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CertificatesScreen()),
-                );
-              }
-          ),
-
-          // Botão PERFIL
-          _buildNavItem(
-              Icons.person_outline,
-              "Perfil",
-              false,
-              onTap: () {
-                // Navega para a tela de Perfil
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                );
-              }
-          ),
+          _buildNavItem(Icons.chat_bubble_outline, "Certificados", false, onTap: () {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CertificatesScreen()));
+          }),
+          _buildNavItem(Icons.person_outline, "Perfil", false, onTap: () {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+          }),
         ],
       ),
     );
   }
+
   Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        color: Colors.transparent, // Aumenta área de toque
+        color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

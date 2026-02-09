@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../servicos/autenticacao_servico.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -8,258 +12,350 @@ class CreateEventScreen extends StatefulWidget {
 }
 
 class _CreateEventScreenState extends State<CreateEventScreen> {
-  final Color primaryRed = const Color(0xFFA93244);
+  final _formKey = GlobalKey<FormState>();
 
-  // Controladores vazios para novo evento
-  final _titleController = TextEditingController();
-  final _descController = TextEditingController();
-  final _dateController = TextEditingController();
-  final _timeController = TextEditingController();
-  final _locationController = TextEditingController();
+  // Controllers
+  final _tituloController = TextEditingController();
+  final _localController = TextEditingController();
+  final _dataController = TextEditingController();
+  final _horaController = TextEditingController();
+  final _descricaoController = TextEditingController();
+  final _vagasController = TextEditingController();
+  final _linkController = TextEditingController();
 
+  File? _imageFile;
+  DateTime? _dataSelecionada;
+  TimeOfDay? _horarioSelecionado;
+
+  final List<TextEditingController> _convidadosControllers = [];
+  bool _carregando = false;
   bool _isOnline = false;
-  bool _isPublished = false; // Começa como rascunho por padrão
+
+  final Color primaryRed = const Color(0xFF9A202F);
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> _selecionarData(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null) {
+      setState(() {
+        _dataSelecionada = picked;
+        _dataController.text = DateFormat('dd/MM/yyyy').format(picked);
+      });
+    }
+  }
+
+  Future<void> _selecionarHorario(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _horarioSelecionado = picked;
+        final localizations = MaterialLocalizations.of(context);
+        _horaController.text = localizations.formatTimeOfDay(picked, alwaysUse24HourFormat: true);
+      });
+    }
+  }
+
+  // --- LÓGICA DE SALVAR CORRIGIDA ---
+  void _salvarEvento() async {
+    // 1. Validações
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_dataSelecionada == null || _horarioSelecionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Selecione DATA e HORÁRIO.")),
+      );
+      return;
+    }
+
+    if (_isOnline && _linkController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("O Link é obrigatório para eventos online.")),
+      );
+      return;
+    }
+
+    setState(() => _carregando = true);
+
+    try {
+      final authService = AutenticacaoServico();
+      String urlDaImagem = "";
+
+      // 3. Combinação de Data e Hora
+      final DateTime dataCompleta = DateTime(
+        _dataSelecionada!.year,
+        _dataSelecionada!.month,
+        _dataSelecionada!.day,
+        _horarioSelecionado!.hour,
+        _horarioSelecionado!.minute,
+      );
+
+      // 4. Salvar no Firestore
+      String? erro = await authService.criarEvento(
+        titulo: _tituloController.text.trim(),
+        local: _localController.text.trim(),
+        data: dataCompleta,
+        descricao: _descricaoController.text.trim(),
+        vagas: int.tryParse(_vagasController.text) ?? 0,
+        palestrantesConvidados: _convidadosControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList(),
+        isOnline: _isOnline,
+        link: _isOnline ? _linkController.text.trim() : null,
+        imageUrl: urlDaImagem, // Passa a URL gerada pelo Storage
+      );
+
+      setState(() => _carregando = false);
+
+      if (erro == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Evento salvo com sucesso!")));
+          Navigator.pop(context);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(erro)));
+        }
+      }
+    } catch (e) {
+      setState(() => _carregando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro interno: $e")));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Novo Evento",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // Validação simples
-              if (_titleController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Por favor, dê um nome ao evento.")),
-                );
-                return;
-              }
-
-              // Lógica de Criar no Backend
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Evento criado com sucesso!")),
-              );
-              Navigator.pop(context);
-            },
-            child: Text("Criar", style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold)),
-          )
-        ],
+        title: const Text("Novo Evento", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- 1. CAPA (Placeholder para upload) ---
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Selecionar imagem da galeria")));
-                },
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLabel("Foto de Capa"),
+              GestureDetector(
+                onTap: _pickImage,
                 child: Container(
                   height: 180,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                    image: _imageFile != null
+                        ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                        : null,
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
-                  child: Column(
+                  child: _imageFile == null
+                      ? const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.grey[400]),
-                      const SizedBox(height: 10),
-                      Text("Adicionar capa", style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.bold)),
+                      Icon(Icons.add_a_photo_outlined, color: Colors.grey, size: 40),
+                      SizedBox(height: 10),
+                      Text("Selecionar imagem", style: TextStyle(color: Colors.grey)),
                     ],
-                  ),
+                  )
+                      : null,
                 ),
               ),
-            ),
 
-            const SizedBox(height: 25),
+              _buildLabel("Título do Evento"),
+              _buildTextField(_tituloController, "Ex: Palestra sobre IA"),
 
-            // --- 2. INFORMAÇÕES BÁSICAS ---
-            _buildSectionTitle("Informações Básicas"),
-            _buildTextField(label: "Nome do evento", controller: _titleController, hint: "Ex: Workshop de Flutter"),
-            const SizedBox(height: 15),
-            _buildTextField(label: "Descrição", controller: _descController, maxLines: 4, hint: "Sobre o que é o evento?"),
+              _buildLabel("Local / Plataforma"),
+              _buildTextField(_localController, "Ex: Auditório Central ou Google Meet"),
 
-            const SizedBox(height: 25),
-
-            // --- 3. DATA E HORA ---
-            _buildSectionTitle("Quando?"),
-            Row(
-              children: [
-                Expanded(child: _buildTextField(label: "Data", controller: _dateController, icon: Icons.calendar_today, hint: "DD/MM/AAAA")),
-                const SizedBox(width: 15),
-                Expanded(child: _buildTextField(label: "Horário", controller: _timeController, icon: Icons.access_time, hint: "00:00")),
-              ],
-            ),
-
-            const SizedBox(height: 25),
-
-            // --- 4. LOCALIZAÇÃO ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionTitle("Onde?"),
-                Row(
-                  children: [
-                    Text("Evento Online", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                    Switch(
-                        activeColor: primaryRed,
-                        value: _isOnline,
-                        onChanged: (val) => setState(() => _isOnline = val)
-                    ),
-                  ],
-                )
-              ],
-            ),
-            if (!_isOnline)
-              _buildTextField(label: "Local / Endereço", controller: _locationController, icon: Icons.location_on_outlined, hint: "Ex: Auditório Principal")
-            else
-              _buildTextField(label: "Link da transmissão", controller: _locationController, icon: Icons.link, hint: "https://..."),
-
-            const SizedBox(height: 25),
-
-            // --- 5. INGRESSOS ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionTitle("Ingressos"),
-                TextButton.icon(
-                    onPressed: (){
-                      // Adicionar lógica de novo lote
-                    },
-                    icon: Icon(Icons.add, size: 16, color: primaryRed),
-                    label: Text("Adicionar Lote", style: TextStyle(color: primaryRed))
-                )
-              ],
-            ),
-            // Mensagem de vazio inicial
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey[200]!)
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: SwitchListTile(
+                  title: const Text("Este evento será Online?", style: TextStyle(fontWeight: FontWeight.w600)),
+                  value: _isOnline,
+                  activeColor: primaryRed,
+                  onChanged: (bool value) {
+                    setState(() {
+                      _isOnline = value;
+                    });
+                  },
+                ),
               ),
-              child: const Text("Nenhum ingresso criado ainda.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-            ),
 
-            const SizedBox(height: 25),
+              if (_isOnline) ...[
+                _buildLabel("Link da Reunião"),
+                _buildTextField(
+                    _linkController,
+                    "Cole aqui o link (Zoom, Meet...)",
+                    icon: Icons.link
+                ),
+              ],
 
-            // --- 6. VISIBILIDADE ---
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey[200]!)
-              ),
-              child: Row(
+              Row(
                 children: [
-                  Icon(_isPublished ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                  const SizedBox(width: 15),
                   Expanded(
+                    flex: 3,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_isPublished ? "Publicar Evento" : "Salvar como Rascunho", style: const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(
-                          _isPublished ? "O evento ficará visível imediatamente" : "Você poderá publicar depois",
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        _buildLabel("Data"),
+                        GestureDetector(
+                          onTap: () => _selecionarData(context),
+                          child: AbsorbPointer(
+                            child: _buildTextField(_dataController, "dd/mm/aaaa", icon: Icons.calendar_today),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Switch(
-                      activeColor: Colors.green,
-                      value: _isPublished,
-                      onChanged: (val) => setState(() => _isPublished = val)
+                  const SizedBox(width: 15),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel("Horário"),
+                        GestureDetector(
+                          onTap: () => _selecionarHorario(context),
+                          child: AbsorbPointer(
+                            child: _buildTextField(_horaController, "00:00", icon: Icons.access_time),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
 
-            const SizedBox(height: 40),
+              _buildLabel("Quantidade de Vagas"),
+              _buildTextField(_vagasController, "Ex: 50", isNumeric: true, icon: Icons.people_outline),
 
-            // Botão Principal de Ação (redundante com o do topo, mas bom para UX)
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Mesma lógica de salvar
-                  if (_titleController.text.isEmpty) return;
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryRed,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0
+              _buildLabel("Descrição"),
+              _buildTextField(_descricaoController, "Detalhes sobre o evento...", maxLines: 3),
+
+              const SizedBox(height: 25),
+              _buildPalestrantesHeader(),
+
+              ..._convidadosControllers.map((controller) => Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: _buildTextField(
+                  controller,
+                  "Nome do convidado",
+                  isConvidado: true,
+                  onDelete: () => setState(() => _convidadosControllers.remove(controller)),
                 ),
-                child: const Text("Criar Evento", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+              )),
+
+              const SizedBox(height: 40),
+              _buildSaveButton(),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
-
-  Widget _buildSectionTitle(String title) {
+  Widget _buildLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+      padding: const EdgeInsets.only(left: 5, bottom: 8, top: 15),
+      child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
     );
   }
 
-  Widget _buildTextField({
-    required String label,
-    required TextEditingController controller,
+  Widget _buildTextField(TextEditingController controller, String hint, {
     int maxLines = 1,
+    bool isConvidado = false,
+    bool isNumeric = false,
     IconData? icon,
-    String? hint
+    VoidCallback? onDelete
   }) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-        prefixIcon: icon != null ? Icon(icon, color: Colors.grey, size: 20) : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+        decoration: InputDecoration(
+          hintText: hint,
+          prefixIcon: icon != null ? Icon(icon, color: Colors.grey, size: 20) : null,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          border: InputBorder.none,
+          suffixIcon: isConvidado
+              ? IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red), onPressed: onDelete)
+              : null,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+      ),
+    );
+  }
+
+  Widget _buildPalestrantesHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text("Palestrantes Extras", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+        if (_convidadosControllers.length < 3)
+          TextButton.icon(
+            onPressed: () => setState(() => _convidadosControllers.add(TextEditingController())),
+            icon: Icon(Icons.add, color: primaryRed),
+            label: Text("Adicionar", style: TextStyle(color: primaryRed)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: _carregando ? null : _salvarEvento,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryRed,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFA93244)),
-        ),
-        filled: true,
-        fillColor: Colors.grey[50],
-        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+        child: _carregando
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text("SALVAR EVENTO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }

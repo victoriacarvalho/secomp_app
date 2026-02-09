@@ -24,6 +24,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     "Sistemas de Informação",
     "Engenharia da Computação",
     "Engenharia de Produção"
+    "Engenharia Elétrica"
   ];
 
   bool _isPasswordVisible = false;

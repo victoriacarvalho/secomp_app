@@ -10,7 +10,7 @@ class SignUpAdmScreen extends StatefulWidget {
 }
 
 class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
-  // Cores padronizadas
+
   final Color primaryRed = const Color(0xFF9A202F);
   final Color lightGreyBackground = const Color(0xFFF3F5F7);
   final Color textGrey = const Color(0xFF666666);

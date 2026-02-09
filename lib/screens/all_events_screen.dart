@@ -1,51 +1,13 @@
 import 'package:flutter/material.dart';
-import 'event_detail_screen.dart'; // Para navegar aos detalhes ao clicar no card
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../servicos/autenticacao_servico.dart'; // Importe seu serviço
+import 'event_detail_screen.dart';
 
 class AllEventsScreen extends StatelessWidget {
   const AllEventsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Lista de dados simulados (Mock Data) para preencher a tela
-    final List<Map<String, String>> events = [
-      {
-        'title': 'Mineração de dados',
-        'location': 'Sala C203',
-        'slots': '30 vagas',
-        'image': 'https://picsum.photos/300/300?random=10',
-      },
-      {
-        'title': 'Análise de dados',
-        'location': 'Sala H102',
-        'slots': '25 vagas',
-        'image': 'https://picsum.photos/300/300?random=11',
-      },
-      {
-        'title': 'Avanço da IA',
-        'location': 'Auditório',
-        'slots': '60 vagas',
-        'image': 'https://picsum.photos/300/300?random=12',
-      },
-      {
-        'title': 'Mercado de trabalho',
-        'location': 'Auditório',
-        'slots': '60 vagas',
-        'image': 'https://picsum.photos/300/300?random=13',
-      },
-      {
-        'title': 'Flutter para Iniciantes',
-        'location': 'Lab 04',
-        'slots': '20 vagas',
-        'image': 'https://picsum.photos/300/300?random=14',
-      },
-      {
-        'title': 'Segurança Digital',
-        'location': 'Sala B101',
-        'slots': '40 vagas',
-        'image': 'https://picsum.photos/300/300?random=15',
-      },
-    ];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
@@ -73,19 +35,43 @@ class AllEventsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // GRID DE EVENTOS
+            // --- AQUI ENTRA O STREAM BUILDER ---
             Expanded(
-              child: GridView.builder(
-                itemCount: events.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, // 2 colunas
-                  crossAxisSpacing: 15, // Espaço horizontal entre cards
-                  mainAxisSpacing: 15, // Espaço vertical entre cards
-                  childAspectRatio: 0.7, // Ajuste da altura do card (0.7 deixa mais alto)
-                ),
-                itemBuilder: (context, index) {
-                  final event = events[index];
-                  return _buildGridCard(context, event);
+              child: StreamBuilder<QuerySnapshot>(
+                stream: AutenticacaoServico().getEventos(), // Sua função no serviço
+                builder: (context, snapshot) {
+                  // 1. Estado de Carregamento
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFF9A202F)));
+                  }
+
+                  // 2. Estado de Erro
+                  if (snapshot.hasError) {
+                    return const Center(child: Text("Erro ao carregar eventos."));
+                  }
+
+                  // 3. Estado Vazio
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text("Nenhum evento encontrado."));
+                  }
+
+                  // 4. Dados Carregados
+                  var docs = snapshot.data!.docs;
+
+                  return GridView.builder(
+                    itemCount: docs.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 15,
+                      mainAxisSpacing: 15,
+                      childAspectRatio: 0.7,
+                    ),
+                    itemBuilder: (context, index) {
+                      // Pega os dados do documento e converte para Map
+                      Map<String, dynamic> data = docs[index].data() as Map<String, dynamic>;
+                      return _buildGridCard(context, data);
+                    },
+                  );
                 },
               ),
             ),
@@ -95,19 +81,13 @@ class AllEventsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGridCard(BuildContext context, Map<String, String> event) {
+  Widget _buildGridCard(BuildContext context, Map<String, dynamic> event) {
     return GestureDetector(
       onTap: () {
-        // Navega para os detalhes do evento
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => EventDetailScreen(
-              title: event['title']!,
-              location: event['location']!,
-              points: "50", // Valor padrão
-              imagePath: 'public/campus.png', // Imagem estática para detalhes
-            ),
+            builder: (context) => EventDetailScreen(eventData: event),
           ),
         );
       },
@@ -126,16 +106,20 @@ class AllEventsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. IMAGEM + CORAÇÃO
+            // IMAGEM
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(20)), // Arredonda tudo
+                  borderRadius: const BorderRadius.all(Radius.circular(20)),
                   child: Image.network(
-                    event['image']!,
+                    event['imageUrl'] != null && event['imageUrl'].toString().isNotEmpty
+                        ? event['imageUrl']
+                        : 'https://via.placeholder.com/150', // Placeholder se não tiver imagem
                     height: 120,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Container(height: 120, color: Colors.grey[300], child: const Icon(Icons.broken_image)),
                   ),
                 ),
                 Positioned(
@@ -144,7 +128,7 @@ class AllEventsScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.4), // Fundo translúcido
+                      color: Colors.white.withOpacity(0.4),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
@@ -153,14 +137,14 @@ class AllEventsScreen extends StatelessWidget {
               ],
             ),
 
-            // 2. INFORMAÇÕES
+            // INFORMAÇÕES
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    event['title']!,
+                    event['titulo'] ?? 'Sem Título',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -172,7 +156,7 @@ class AllEventsScreen extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          event['location']!,
+                          event['isOnline'] == true ? "Online" : (event['local'] ?? 'A definir'),
                           style: const TextStyle(fontSize: 12, color: Colors.grey),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -181,22 +165,17 @@ class AllEventsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    event['slots']!,
+                    "${event['vagas'] ?? 0} vagas",
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 8),
-
-                  // Preço colorido (RichText para misturar cores)
                   RichText(
                     text: const TextSpan(
                       style: TextStyle(fontSize: 14),
                       children: [
                         TextSpan(
                           text: "R\$0",
-                          style: TextStyle(
-                              color: Color(0xFFA93244), // Vermelho Vinho
-                              fontWeight: FontWeight.bold
-                          ),
+                          style: TextStyle(color: Color(0xFFA93244), fontWeight: FontWeight.bold),
                         ),
                         TextSpan(
                           text: "/pessoa",

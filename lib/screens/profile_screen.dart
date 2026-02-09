@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../servicos/autenticacao_servico.dart';
 import 'onboarding_screen.dart';
-import 'personal_data_screen.dart'; // Importação necessária para a navegação
+import 'personal_data_screen.dart';
+import 'create_event_screen.dart'; // IMPORTAÇÃO NECESSÁRIA
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -46,9 +47,9 @@ class ProfileScreen extends StatelessWidget {
               "Perfil",
               style: TextStyle(
                 fontFamily: 'Times New Roman',
-                fontWeight: FontWeight.w500, 
-                fontSize: 22, 
-                color: Colors.black87
+                fontWeight: FontWeight.w500,
+                fontSize: 22,
+                color: Colors.black87,
               ),
             ),
           ),
@@ -69,9 +70,9 @@ class ProfileScreen extends StatelessWidget {
                           child: Text(
                             nome.isNotEmpty ? nome[0].toUpperCase() : "?",
                             style: const TextStyle(
-                              fontSize: 40, 
-                              fontWeight: FontWeight.bold, 
-                              color: primaryRed
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: primaryRed,
                             ),
                           ),
                         ),
@@ -80,10 +81,9 @@ class ProfileScreen extends StatelessWidget {
                           nome,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            fontSize: 24, 
-                            fontWeight: FontWeight.bold, 
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                             color: Colors.black,
-                            fontFamily: 'sans-serif'
                           ),
                         ),
                         const SizedBox(height: 5),
@@ -100,13 +100,13 @@ class ProfileScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
-                              "ORGANIZADOR", 
+                              "ORGANIZADOR",
                               style: TextStyle(
-                                color: primaryRed, 
-                                fontSize: 10, 
+                                color: primaryRed,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2
-                              )
+                                letterSpacing: 1.2,
+                              ),
                             ),
                           ),
                       ],
@@ -114,9 +114,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 35),
-
                   _buildStatsContainer(primaryRed),
-
                   const SizedBox(height: 30),
 
                   // Menu de Opções
@@ -128,9 +126,24 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        // Navegação para Dados Pessoais
+                        // --- OPÇÃO EXCLUSIVA PARA ADMIN ---
+                        if (isAdmin) ...[
+                          _buildMenuItem(
+                            Icons.add_circle_outline,
+                            "Criar Novo Evento",
+                            color: primaryRed,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const CreateEventScreen()),
+                              );
+                            },
+                          ),
+                          _buildDividerLine(),
+                        ],
+
                         _buildMenuItem(
-                          Icons.person_outline, 
+                          Icons.person_outline,
                           "Dados Pessoais",
                           onTap: () {
                             Navigator.push(
@@ -144,19 +157,19 @@ class ProfileScreen extends StatelessWidget {
                         _buildDividerLine(),
                         _buildMenuItem(Icons.history, "Histórico de Participação"),
                         _buildDividerLine(),
-                        
+
                         // LOGOUT
                         _buildMenuItem(
-                          Icons.logout, 
-                          "Sair da conta", 
+                          Icons.logout,
+                          "Sair da conta",
                           color: Colors.redAccent,
                           onTap: () {
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-                              (route) => false,
+                                  (route) => false,
                             );
-                          }
+                          },
                         ),
                       ],
                     ),
@@ -171,8 +184,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- Widgets Auxiliares ---
-
+  // --- Widgets Auxiliares permanecem os mesmos ---
   Widget _buildStatsContainer(Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),

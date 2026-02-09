@@ -1,38 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
+import 'package:flutter/gestures.dart'; // Para TapGestureRecognizer
+import 'dart:io'; // Para File
+import 'package:cloud_firestore/cloud_firestore.dart'; // Para Timestamp
+import 'package:intl/intl.dart'; // Para DateFormat
 
 class EventDetailScreen extends StatelessWidget {
-  final String title;
-  final String location;
-  final String points;
-  final String imagePath;
+  final Map<String, dynamic> eventData;
 
-  EventDetailScreen({
+  const EventDetailScreen({
     super.key,
-    required this.title,
-    required this.location,
-    required this.points,
-    required this.imagePath,
+    required this.eventData,
   });
 
   // Cores do projeto
   final Color primaryRed = const Color(0xFF9A202F);
 
-  // --- 1. TEXTO COMPLETO DA DESCRIÇÃO ---
-  final String fullDescription = """
-Descubra estratégias essenciais para planejar seu crescimento profissional e se destacar no mercado atual. Aprenda a identificar oportunidades, desenvolver competências chave e construir uma rede de contatos sólida.
-
-Nesta palestra, abordaremos:
-• Análise de tendências de mercado.
-• Desenvolvimento de soft skills e hard skills.
-• Como criar um plano de carreira executável.
-• A importância do networking estratégico.
-
-Prepare-se para dar o próximo passo na sua jornada profissional com dicas práticas e insights valiosos de especialistas da área.
-""";
-
-  // --- 2. FUNÇÃO PARA MOSTRAR O POP-UP (BottomSheet) ---
-  void _showFullDescription(BuildContext context) {
+  // --- FUNÇÃO PARA MOSTRAR A DESCRIÇÃO COMPLETA ---
+  void _showFullDescription(BuildContext context, String description) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -63,7 +47,7 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    'Sobre a palestra',
+                    'Sobre o evento',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 15),
@@ -71,7 +55,7 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
                     child: SingleChildScrollView(
                       controller: controller,
                       child: Text(
-                        fullDescription,
+                        description,
                         style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.black87),
                       ),
                     ),
@@ -101,6 +85,31 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
 
   @override
   Widget build(BuildContext context) {
+    // --- EXTRAÇÃO DE DADOS DO MAP ---
+    final String title = eventData['titulo'] ?? 'Sem Título';
+    final String description = eventData['descricao'] ?? 'Sem descrição detalhada.';
+    final String palestrante = eventData['palestrantePrincipal'] ?? 'Organização';
+    final int vagas = eventData['vagas'] ?? 0;
+
+    // Tratamento de Data
+    final Timestamp? timestamp = eventData['data'];
+    final String dataFormatada = timestamp != null
+        ? DateFormat("dd/MM 'às' HH:mm", "pt_BR").format(timestamp.toDate())
+        : "Data a definir";
+
+    // Tratamento Online/Presencial
+    final bool isOnline = eventData['isOnline'] ?? false;
+    final String location = isOnline
+        ? "Evento Online"
+        : (eventData['local'] ?? "Local a definir");
+
+    // Tratamento de Imagem
+    final String? imageUrl = eventData['imageUrl'];
+    final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
+
+    // Tratamento de Convidados (Lista)
+    final List<dynamic> convidados = eventData['palestrantesConvidados'] ?? [];
+
     final double imageHeight = MediaQuery.of(context).size.height * 0.45;
 
     return Scaffold(
@@ -112,13 +121,23 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
             height: imageHeight,
             width: double.infinity,
             decoration: BoxDecoration(
+              color: Colors.grey[300], // Cor de fundo caso falhe
               image: DecorationImage(
-                // OBS: Usei AssetImage pois foi o que você mandou na tela anterior.
-                // Se der erro, troque por NetworkImage se for URL externa.
-                image: AssetImage(imagePath),
+                image: hasImage
+                    ? (imageUrl!.startsWith('http')
+                    ? NetworkImage(imageUrl)
+                    : FileImage(File(imageUrl)) as ImageProvider)
+                    : const AssetImage('assets/images/event_placeholder.jpg'),
                 fit: BoxFit.cover,
+                onError: (exception, stackTrace) {
+                  // Evita crash se a imagem falhar
+                  print("Erro ao carregar imagem: $exception");
+                },
               ),
             ),
+            child: !hasImage
+                ? Icon(Icons.event, size: 80, color: Colors.grey[400])
+                : null,
           ),
 
           // 2. CAMADA DE CONTEÚDO (Scroll)
@@ -145,7 +164,10 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
                       Center(
                         child: Container(
                           width: 40, height: 4,
-                          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 25),
@@ -153,17 +175,50 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
                       // Título e Palestrante
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-                                const Text('José da Silva', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                                Text(
+                                    title,
+                                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, height: 1.1)
+                                ),
+                                const SizedBox(height: 5),
+                                Row(
+                                  children: [
+                                    Icon(Icons.person, size: 16, color: primaryRed),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                        palestrante,
+                                        style: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500)
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
-                          const CircleAvatar(radius: 30, backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11')),
+                          // Badge de Data
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: primaryRed.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                    timestamp != null ? DateFormat('dd').format(timestamp.toDate()) : "--",
+                                    style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 20)
+                                ),
+                                Text(
+                                    timestamp != null ? DateFormat('MMM').format(timestamp.toDate()).toUpperCase() : "--",
+                                    style: TextStyle(color: primaryRed, fontSize: 12, fontWeight: FontWeight.bold)
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -171,41 +226,92 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
                       // Ícones de Informação
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, color: Colors.grey, size: 20),
+                          Icon(isOnline ? Icons.videocam_outlined : Icons.location_on_outlined, color: Colors.grey, size: 20),
                           const SizedBox(width: 4),
-                          Text(location, style: const TextStyle(color: Colors.grey)),
-                          const SizedBox(width: 15),
+                          Expanded(child: Text(location, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis)),
+
+                          const SizedBox(width: 10),
+
+                          const Icon(Icons.access_time, color: Colors.grey, size: 20),
+                          const SizedBox(width: 4),
+                          Text(timestamp != null ? DateFormat('HH:mm').format(timestamp.toDate()) : "--:--", style: const TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
                           const Icon(Icons.people_outline, color: Colors.grey, size: 20),
                           const SizedBox(width: 4),
-                          Text('$points(35)', style: const TextStyle(color: Colors.grey)),
+                          Text('$vagas Vagas', style: const TextStyle(color: Colors.grey)),
                           const Spacer(),
-                          Text('R\$0', style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 18)),
-                          const Text('/pessoa', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text('Grátis', style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 18)),
                         ],
                       ),
                       const SizedBox(height: 25),
 
-                      // Miniaturas
-                      Row(children: List.generate(5, (index) => _buildThumbnail())),
-                      const SizedBox(height: 30),
+                      // Link do Evento (Se for Online)
+                      if (isOnline && eventData['link'] != null && eventData['link'].toString().isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.blue[200]!)
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.link, color: Colors.blue),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  eventData['link'],
+                                  style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 25),
+                      ],
+
+                      // Palestrantes Convidados
+                      if (convidados.isNotEmpty) ...[
+                        const Text("Convidados", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
+                          children: convidados.map((nome) => Chip(
+                            label: Text(nome.toString()),
+                            backgroundColor: Colors.grey[100],
+                            avatar: CircleAvatar(
+                              backgroundColor: primaryRed,
+                              child: Text(nome.toString()[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                            ),
+                          )).toList(),
+                        ),
+                        const SizedBox(height: 25),
+                      ],
 
                       // Descrição
-                      const Text('Sobre a palestra', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Text('Sobre o evento', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
 
                       RichText(
                         text: TextSpan(
                           style: const TextStyle(color: Colors.black87, fontSize: 15, height: 1.6),
                           children: [
-                            const TextSpan(text: 'Descubra estratégias essenciais para planejar seu crescimento profissional e se destacar no mercado atual. Aprenda a identificar oportunidades... '),
-                            TextSpan(
-                              text: 'Leia mais',
-                              style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  _showFullDescription(context);
-                                },
-                            ),
+                            TextSpan(text: description.length > 100 ? "${description.substring(0, 100)}... " : description),
+                            if (description.length > 100)
+                              TextSpan(
+                                text: 'Leia mais',
+                                style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    _showFullDescription(context, description);
+                                  },
+                              ),
                           ],
                         ),
                       ),
@@ -227,7 +333,7 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
                               const SnackBar(content: Text("Inscrição realizada com sucesso!")),
                             );
                           },
-                          child: const Text('Inscrever', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          child: const Text('Inscrever-se', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -238,24 +344,24 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
             ),
           ),
 
-          // 3. CAMADA DE BOTÕES (MOVIDA PARA O FINAL PARA FICAR NO TOPO)
+          // 3. CAMADA DE BOTÕES (VOLTAR)
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // AQUI ESTÁ A LÓGICA DE VOLTAR
                   _buildCircleButton(
                       Icons.arrow_back_ios_new,
                           () {
-                        // Verifica se pode voltar antes de tentar
                         if (Navigator.canPop(context)) {
                           Navigator.pop(context);
                         }
                       }
                   ),
-                  _buildCircleButton(Icons.bookmark_border, () {}),
+                  _buildCircleButton(Icons.share, () {
+
+                  }),
                 ],
               ),
             ),
@@ -272,17 +378,6 @@ Prepare-se para dar o próximo passo na sua jornada profissional com dicas prát
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), shape: BoxShape.circle),
         child: Icon(icon, color: Colors.white, size: 22),
-      ),
-    );
-  }
-
-  Widget _buildThumbnail() {
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      width: 50, height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        image: const DecorationImage(image: NetworkImage('https://picsum.photos/200'), fit: BoxFit.cover),
       ),
     );
   }

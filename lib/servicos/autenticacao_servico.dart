@@ -1,48 +1,46 @@
+import 'dart:io'; // Necessário para File
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class AutenticacaoServico {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // --- CADASTRO DE PARTICIPANTE (ALUNO) ---
-  // Adicionado o parâmetro 'curso'
+
+  // --- CADASTRO DE PARTICIPANTE ---
   Future<String?> cadastrarUsuario({
     required String nome,
     required String email,
     required String senha,
-    required String curso, // Novo parâmetro
+    required String curso,
   }) async {
     try {
-      // 1. Cria o usuário no Firebase Auth
       UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: senha,
       );
 
-      // 2. Salva o perfil no Firestore usando o UID como ID do documento
       await _firestore.collection('usuarios').doc(userCredential.user!.uid).set({
         'nome': nome,
         'email': email,
         'role': 'participante',
-        'curso': curso, // Campo adicionado aqui
+        'curso': curso,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Atualiza o nome de exibição no Firebase Auth
       await userCredential.user?.updateDisplayName(nome);
-
-      return null; // Sucesso
+      return null;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') return "Este e-mail já está em uso.";
       if (e.code == 'weak-password') return "A senha é muito fraca.";
-      return e.message; 
+      return e.message;
     } catch (e) {
       return "Erro inesperado ao cadastrar participante.";
     }
   }
 
-  // --- CADASTRO DE ADMINISTRADOR (ORGANIZADOR) ---
+  // --- CADASTRO DE ADMIN ---
   Future<String?> cadastrarAdm({
     required String nome,
     required String email,
@@ -50,20 +48,13 @@ class AutenticacaoServico {
     required String tokenDigitado,
   }) async {
     try {
-      DocumentSnapshot snapshot = await _firestore
-          .collection('configuracoes')
-          .doc('acesso')
-          .get();
+      DocumentSnapshot snapshot = await _firestore.collection('configuracoes').doc('acesso').get();
 
-      if (!snapshot.exists) {
-        return "Erro de configuração no servidor. Verifique a coleção no Firebase.";
-      }
+      if (!snapshot.exists) return "Erro de configuração no servidor.";
 
       String tokenNoServidor = snapshot.get('token_adm');
 
-      if (tokenDigitado != tokenNoServidor) {
-        return "Chave de acesso inválida. Contate a coordenação.";
-      }
+      if (tokenDigitado != tokenNoServidor) return "Chave de acesso inválida.";
 
       UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
@@ -78,85 +69,103 @@ class AutenticacaoServico {
       });
 
       await userCredential.user?.updateDisplayName(nome);
-      return null; 
+      return null;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') return "Este e-mail já está em uso.";
       return e.message;
     } catch (e) {
-      return "Erro ao validar chave ou criar perfil: $e";
+      return "Erro ao validar chave: $e";
     }
   }
 
   // --- LOGIN ---
-  Future<String?> logarUsuario({
-    required String email,
-    required String senha,
-  }) async {
+  Future<String?> logarUsuario({required String email, required String senha}) async {
     try {
-      await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: senha,
-      );
-      return null; 
+      await _firebaseAuth.signInWithEmailAndPassword(email: email, password: senha);
+      return null;
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        return "E-mail ou senha incorretos.";
-      }
-      return e.message;
-    } catch (e) {
-      return "Erro inesperado ao fazer login.";
+      return "E-mail ou senha incorretos.";
     }
   }
 
-  // --- RECUPERAÇÃO DE SENHA ---
+  // --- RECUPERAR SENHA ---
   Future<String?> recuperarSenha({required String email}) async {
     try {
       await _firebaseAuth.setLanguageCode("pt-br");
       await _firebaseAuth.sendPasswordResetEmail(email: email);
-      return null; 
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        return "E-mail não encontrado em nossa base.";
-      }
-      return "Ocorreu um erro: ${e.message}";
+      return null;
     } catch (e) {
-      return "Erro inesperado ao tentar resetar a senha.";
+      return "Erro ao resetar senha.";
     }
   }
 
-  // --- BUSCA DE DADOS PARA O PERFIL (Com Debug) ---
+  // --- DADOS DO USUÁRIO ---
   Future<Map<String, dynamic>?> getDadosUsuarioLogado() async {
     User? user = _firebaseAuth.currentUser;
-    
-    if (user == null) {
-      print("DEBUG: Nenhum usuário logado no Firebase Auth.");
-      return null;
-    }
-
+    if (user == null) return null;
     try {
       DocumentSnapshot doc = await _firestore.collection('usuarios').doc(user.uid).get();
-      
-      if (doc.exists) {
-        return doc.data() as Map<String, dynamic>;
-      } else {
-        print("DEBUG: ERRO - O documento com ID ${user.uid} NÃO existe no Firestore.");
-        return null;
-      }
+      return doc.exists ? doc.data() as Map<String, dynamic> : null;
     } catch (e) {
-      print("DEBUG: Erro técnico na busca: $e");
       return null;
     }
   }
 
-  // --- BUSCA APENAS O PAPEL (ROLE) ---
   Future<String> getUserRole() async {
     User? user = _firebaseAuth.currentUser;
     if (user != null) {
       DocumentSnapshot doc = await _firestore.collection('usuarios').doc(user.uid).get();
-      if (doc.exists) {
-        return doc.get('role');
-      }
+      if (doc.exists) return doc.get('role');
     }
     return 'participante';
+  }
+
+
+  // --- CRIAR EVENTO ---
+  Future<String?> criarEvento({
+    required String titulo,
+    required String local,
+    required DateTime data,
+    required String descricao,
+    required int vagas,
+    required List<String> palestrantesConvidados,
+    required bool isOnline,
+    String? link,
+    String? imageUrl,
+  }) async {
+    try {
+      User? user = _firebaseAuth.currentUser;
+      if (user == null) return "Usuário não autenticado.";
+
+      String uid = user.uid;
+      DocumentSnapshot userDoc = await _firestore.collection('usuarios').doc(uid).get();
+      String nomeUsuarioLogado = userDoc.exists ? (userDoc.get('nome') ?? "Organizador") : "Organizador";
+
+      Map<String, dynamic> dadosDoEvento = {
+        'titulo': titulo,
+        'local': local,
+        'data': Timestamp.fromDate(data),
+        'descricao': descricao,
+        'vagas': vagas,
+        'isOnline': isOnline,
+        'palestrantePrincipal': nomeUsuarioLogado,
+        'palestrantesConvidados': palestrantesConvidados,
+        'organizadorUid': uid,
+        'createdAt': FieldValue.serverTimestamp(),
+        'link': link ?? "",
+        'imageUrl': imageUrl ?? "",
+      };
+
+      await _firestore.collection('eventos').add(dadosDoEvento);
+      return null;
+    } catch (e) {
+      return "Erro ao criar evento: $e";
+    }
+  }
+
+  // --- LISTAR EVENTOS ---
+  Stream<QuerySnapshot> getEventos() {
+    // Ordena pela data de criação decrescente
+    return _firestore.collection('eventos').orderBy('createdAt', descending: true).snapshots();
   }
 }
