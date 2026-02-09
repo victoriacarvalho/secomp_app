@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../servicos/autenticacao_servico.dart';
 import 'home_screen.dart';
 import 'forgot_password.dart';
 import 'sign_up_screen.dart';
@@ -12,13 +13,66 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Instância do serviço e Controllers
+  final AutenticacaoServico _authService = AutenticacaoServico();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _senhaController = TextEditingController();
+
+  // Estados da tela
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   // Cores do projeto
   final Color primaryRed = const Color(0xFF9A202F);
   final Color lightGreyInput = const Color(0xFFF3F3F3);
 
-  // --- FUNÇÃO PARA O POP-UP DE ESCOLHA ---
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
+  }
+
+  // --- LÓGICA DE LOGIN ---
+  void _realizarLogin() async {
+    String email = _emailController.text.trim();
+    String senha = _senhaController.text;
+
+    if (email.isEmpty || senha.isEmpty) {
+      _notificacao("Por favor, preencha todos os campos.", erro: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Chama o serviço para verificar no Firebase
+    String? erro = await _authService.logarUsuario(email: email, senha: senha);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (erro != null) {
+      _notificacao(erro, erro: true);
+    } else {
+      // Se não houver erro, entra no app e limpa a pilha de navegação
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  }
+
+  void _notificacao(String mensagem, {bool erro = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        backgroundColor: erro ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // --- POP-UP DE ESCOLHA DE CADASTRO ---
   void _showSignUpOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -62,10 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 subtitle: const Text("Para assistir palestras e workshops"),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpScreen()));
                 },
               ),
               const Divider(),
@@ -82,10 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 subtitle: const Text("Acesso restrito à equipe SECOMP"),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignUpAdmScreen()),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpAdmScreen()));
                 },
               ),
               const SizedBox(height: 20),
@@ -121,64 +169,37 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 40),
 
-              Center(
-                child: Column(
-                  children: [
-                    const Text(
-                      'Faça login',
-                      style: TextStyle(
-                        fontFamily: 'Times New Roman',
-                        fontSize: 32,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Faça login para continuar',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  ],
+              const Center(
+                child: Text(
+                  'Faça login',
+                  style: TextStyle(
+                    fontFamily: 'Times New Roman',
+                    fontSize: 32,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
 
               const SizedBox(height: 50),
 
-              _buildTextField(hintText: 'www.uihut@gmail.com'),
+              // Campo de Email
+              _buildTextField(
+                hintText: 'exemplo@aluno.ufop.edu.br',
+                icon: Icons.email_outlined,
+                controller: _emailController,
+              ),
 
               const SizedBox(height: 20),
 
               // Campo de Senha
-              TextField(
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: lightGreyInput,
-                  hintText: '**********',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                ),
-              ),
+              _buildPasswordField(),
 
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()));
                   },
                   child: Text(
                     'Esqueceu sua senha?',
@@ -189,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // --- BOTÃO LOGIN (REDIRECIONAMENTO) ---
+              // Botão Login com indicador de progresso
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -198,61 +219,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     backgroundColor: primaryRed,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
-                  onPressed: () {
-                    // Redireciona para a Home e limpa a pilha de navegação
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HomeScreen(),
+                  onPressed: _isLoading ? null : _realizarLogin,
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Login',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                    );
-                  },
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
                 ),
               ),
 
               const SizedBox(height: 40),
 
-              // Criar conta (CHAMA O POP-UP)
+              // Rodapé: Criar conta
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Não tem uma conta? ", style: TextStyle(color: Colors.grey)),
+                  const Text("Não tem uma conta? ", style: TextStyle(color: Colors.grey, fontSize: 16)),
                   GestureDetector(
                     onTap: () => _showSignUpOptions(context),
                     child: Text(
                       "Criar conta",
-                      style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   ),
-                ],
-              ),
-
-              const SizedBox(height: 30),
-
-              Row(
-                children: [
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Text("Ou conecte-se", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                  ),
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                ],
-              ),
-
-              const SizedBox(height: 30),
-
-              // Botões Sociais
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _socialButton('public/facebook.png'),
-                  const SizedBox(width: 20),
-                  _socialButton('public/instagram.png'),
                 ],
               ),
               const SizedBox(height: 20),
@@ -263,28 +253,47 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({required String hintText}) {
+  Widget _buildTextField({required String hintText, required IconData icon, required TextEditingController controller}) {
     return TextField(
+      controller: controller,
       decoration: InputDecoration(
         filled: true,
         fillColor: lightGreyInput,
+        prefixIcon: Icon(icon, color: Colors.grey),
         hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.grey),
+        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16),
       ),
     );
   }
 
-  Widget _socialButton(String assetPath) {
-    return Container(
-      height: 50,
-      width: 50,
-      decoration: const BoxDecoration(shape: BoxShape.circle),
-      child: Image.asset(assetPath, fit: BoxFit.contain),
+  Widget _buildPasswordField() {
+    return TextField(
+      controller: _senhaController,
+      obscureText: _obscurePassword,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: lightGreyInput,
+        prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+        hintText: 'Senha de acesso',
+        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: Colors.grey,
+          ),
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        ),
+      ),
     );
   }
 }

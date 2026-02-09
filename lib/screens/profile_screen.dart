@@ -1,207 +1,233 @@
 import 'package:flutter/material.dart';
-import 'manage_events_screen.dart';
+import '../servicos/autenticacao_servico.dart';
+import 'onboarding_screen.dart';
+import 'personal_data_screen.dart'; // Importação necessária para a navegação
 
 class ProfileScreen extends StatelessWidget {
-
-  final bool isAdmin = true;
-
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryRed = Color(0xFFA93244);
+    final AutenticacaoServico authService = AutenticacaoServico();
+    const Color primaryRed = Color(0xFF9A202F);
+    const Color textGrey = Color(0xFF666666);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Perfil",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: primaryRed),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Editar Perfil")));
-            },
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: authService.getDadosUsuarioLogado(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator(color: primaryRed)),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: Text("Erro ao carregar dados do perfil.")),
+          );
+        }
+
+        var dados = snapshot.data!;
+        String nome = dados['nome'] ?? "Usuário";
+        String email = dados['email'] ?? "Sem e-mail";
+        bool isAdmin = dados['role'] == 'admin';
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: const Text(
+              "Perfil",
+              style: TextStyle(
+                fontFamily: 'Times New Roman',
+                fontWeight: FontWeight.w500, 
+                fontSize: 22, 
+                color: Colors.black87
+              ),
+            ),
           ),
-          const SizedBox(width: 10),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
 
-              // 1. FOTO E NOME
-              Center(
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.pink[50], // Fundo rosa claro da imagem
-                      backgroundImage: const NetworkImage('https://i.pravatar.cc/300?img=12'), // Imagem ilustrativa
-                    ),
-                    const SizedBox(height: 15),
-                    const Text(
-                      "Leonardo",
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      isAdmin ? "admin@secomp.com" : "leonardo@gmail.com", // Muda email se for admin
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                    if (isAdmin)
-                      Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                            color: primaryRed.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10)
+                  // Foto de Perfil com Inicial do Nome
+                  Center(
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 55,
+                          backgroundColor: primaryRed.withOpacity(0.1),
+                          child: Text(
+                            nome.isNotEmpty ? nome[0].toUpperCase() : "?",
+                            style: const TextStyle(
+                              fontSize: 40, 
+                              fontWeight: FontWeight.bold, 
+                              color: primaryRed
+                            ),
+                          ),
                         ),
-                        child: Text("Administrador", style: TextStyle(color: primaryRed, fontSize: 10, fontWeight: FontWeight.bold)),
-                      )
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // 2. ESTATÍSTICAS (Container com sombra)
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.08),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
+                        const SizedBox(height: 15),
+                        Text(
+                          nome,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24, 
+                            fontWeight: FontWeight.bold, 
+                            color: Colors.black,
+                            fontFamily: 'sans-serif'
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          email,
+                          style: const TextStyle(fontSize: 14, color: textGrey),
+                        ),
+                        if (isAdmin)
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: primaryRed.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              "ORGANIZADOR", 
+                              style: TextStyle(
+                                color: primaryRed, 
+                                fontSize: 10, 
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2
+                              )
+                            ),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildStatItem("Agendados", "360", primaryRed),
-                    _buildDivider(),
-                    _buildStatItem("Check -in", "238", primaryRed),
-                    _buildDivider(),
-                    _buildStatItem("Salvos", "473", primaryRed),
-                  ],
-                ),
-              ),
+                  ),
 
-              const SizedBox(height: 30),
+                  const SizedBox(height: 35),
 
-              // 3. MENU DE OPÇÕES (Lista agrupada)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  // Na imagem o menu parece limpo, sem muita sombra, talvez uma borda sutil ou apenas layout
-                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                ),
-                child: Column(
-                  children: [
-                    _buildMenuItem(Icons.person_outline, "Meu perfil", onTap: (){}),
-                    _buildDividerLine(),
-                    _buildMenuItem(Icons.bookmark_border, "Eventos salvos", onTap: (){}),
-                    _buildDividerLine(),
-                    _buildMenuItem(Icons.rocket_launch_outlined, "Próximos eventos", onTap: (){}),
+                  _buildStatsContainer(primaryRed),
 
-                    // --- ÁREA EXCLUSIVA DE ADMIN ---
-                    if (isAdmin) ...[
-                      _buildDividerLine(),
-                      _buildMenuItem(
-                          Icons.admin_panel_settings_outlined,
-                          "Gerenciar Eventos",
-                          isHighlight: true,
-                          onTap: (){
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageEventsScreen()));
+                  const SizedBox(height: 30),
+
+                  // Menu de Opções
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Navegação para Dados Pessoais
+                        _buildMenuItem(
+                          Icons.person_outline, 
+                          "Dados Pessoais",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const PersonalDataScreen()),
+                            );
+                          },
+                        ),
+                        _buildDividerLine(),
+                        _buildMenuItem(Icons.bookmark_border, "Meus Eventos Salvos"),
+                        _buildDividerLine(),
+                        _buildMenuItem(Icons.history, "Histórico de Participação"),
+                        _buildDividerLine(),
+                        
+                        // LOGOUT
+                        _buildMenuItem(
+                          Icons.logout, 
+                          "Sair da conta", 
+                          color: Colors.redAccent,
+                          onTap: () {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                              (route) => false,
+                            );
                           }
-                      ),
-                      _buildDividerLine(),
-                      _buildMenuItem(
-                          Icons.qr_code_scanner,
-                          "Leitor de QR Code",
-                          isHighlight: true,
-                          onTap: (){}
-                      ),
-                    ],
-                    // -------------------------------
-
-                    _buildDividerLine(),
-
-                    _buildDividerLine(),
-                    _buildMenuItem(Icons.public, "Sobre", onTap: (){}),
-                  ],
-                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
-
-              const SizedBox(height: 30),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // --- Widgets Auxiliares ---
 
+  Widget _buildStatsContainer(Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStatItem("Inscritos", "05", color),
+          _buildVerticalDivider(),
+          _buildStatItem("Check-in", "02", color),
+          _buildVerticalDivider(),
+          _buildStatItem("Certificados", "00", color),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatItem(String label, String count, Color color) {
     return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          count,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 5),
+        Text(count, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
       ],
     );
   }
 
-  Widget _buildDivider() {
-    return Container(
-      height: 40,
-      width: 1,
-      color: Colors.grey.withOpacity(0.2),
-    );
+  Widget _buildVerticalDivider() {
+    return Container(height: 30, width: 1, color: Colors.grey.withOpacity(0.2));
   }
 
   Widget _buildDividerLine() {
     return Divider(height: 1, color: Colors.grey.withOpacity(0.1), indent: 20, endIndent: 20);
   }
 
-  Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap, bool isHighlight = false}) {
+  Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap, Color color = Colors.black87}) {
     return ListTile(
       onTap: onTap,
-      leading: Icon(icon, color: isHighlight ? const Color(0xFFA93244) : Colors.grey[600], size: 22),
+      leading: Icon(icon, color: color == Colors.black87 ? Colors.grey[600] : color, size: 22),
       title: Text(
         title,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: isHighlight ? const Color(0xFFA93244) : Colors.black87,
-        ),
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: color),
       ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
     );
   }
 }

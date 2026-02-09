@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../servicos/autenticacao_servico.dart';
+import 'home_screen.dart'; // Import necessário para o redirecionamento
 
 class SignUpAdmScreen extends StatefulWidget {
   const SignUpAdmScreen({super.key});
@@ -13,7 +15,74 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
   final Color lightGreyBackground = const Color(0xFFF3F5F7);
   final Color textGrey = const Color(0xFF666666);
 
+  // Instância do serviço e Controllers
+  final AutenticacaoServico _authService = AutenticacaoServico();
+  final TextEditingController _nomeController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _senhaController = TextEditingController();
+  final TextEditingController _tokenController = TextEditingController();
+
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nomeController.dispose();
+    _emailController.dispose();
+    _senhaController.dispose();
+    _tokenController.dispose();
+    super.dispose();
+  }
+
+  // --- LÓGICA DE CADASTRO MODIFICADA ---
+  void _validarCadastroAdm() async {
+    String nome = _nomeController.text.trim();
+    String email = _emailController.text.trim();
+    String senha = _senhaController.text;
+    String token = _tokenController.text.trim();
+
+    if (nome.isEmpty || email.isEmpty || senha.isEmpty || token.isEmpty) {
+      _notificacao("Preencha todos os campos, incluindo a chave.", erro: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // O serviço agora usa o UID do Auth para criar o doc no Firestore
+    String? erro = await _authService.cadastrarAdm(
+      nome: nome,
+      email: email,
+      senha: senha,
+      tokenDigitado: token,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (erro != null) {
+      _notificacao(erro, erro: true);
+    } else {
+      _notificacao("Organizador cadastrado com sucesso!");
+      
+      // REDIRECIONAMENTO AUTOMÁTICO: 
+      // Como o usuário já está logado após o cadastro, mandamos direto para a Home
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  void _notificacao(String mensagem, {bool erro = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        backgroundColor: erro ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,29 +95,31 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-
-              // Botão Voltar
               _buildBackButton(context),
-
               const SizedBox(height: 30),
 
-              // Cabeçalho Diferenciado
+              // Cabeçalho ADM
               Center(
                 child: Column(
                   children: [
-                    Text(
-                      'Criar conta ADM',
+                    const Text(
+                      'Criar conta',
                       style: TextStyle(
                         fontFamily: 'Times New Roman',
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Text(
                       'Acesso restrito a organizadores',
-                      style: TextStyle(color: primaryRed, fontWeight: FontWeight.w600, fontSize: 14),
+                      style: TextStyle(
+                        color: primaryRed, 
+                        fontWeight: FontWeight.w600, 
+                        fontSize: 14,
+                        fontFamily: 'sans-serif'
+                      ),
                     ),
                   ],
                 ),
@@ -56,56 +127,32 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
 
               const SizedBox(height: 30),
 
-              // Campo: Nome Completo
-              _buildTextField(hint: 'Nome completo do organizador', icon: Icons.person_outline),
-
+              _buildTextField(hint: 'Nome completo do organizador', icon: Icons.person_outline, controller: _nomeController),
               const SizedBox(height: 15),
-
-              // Campo: Email Institucional
-              _buildTextField(hint: 'email@institucional.com', icon: Icons.email_outlined, type: TextInputType.emailAddress),
-
+              _buildTextField(hint: 'email@institucional.com', icon: Icons.email_outlined, type: TextInputType.emailAddress, controller: _emailController),
               const SizedBox(height: 15),
-
-              // Campo: Senha
               _buildPasswordField(),
-
               const SizedBox(height: 15),
 
-              // CAMPO EXCLUSIVO ADM: Token de Segurança
               _buildTextField(
                 hint: 'Chave de Acesso SECOMP',
                 icon: Icons.vpn_key_outlined,
-                isImportant: true,
+                controller: _tokenController,
               ),
 
               const Padding(
                 padding: EdgeInsets.only(top: 8, left: 4),
                 child: Text(
                   'Insira o código fornecido pela coordenação do ICEA.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'sans-serif'),
                 ),
               ),
 
               const SizedBox(height: 30),
-
-              // Botão de Cadastro
               _buildSubmitButton(),
-
+              const SizedBox(height: 25),
+              _buildFooter(),
               const SizedBox(height: 20),
-
-              // Link para Login
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Já é um organizador? ', style: TextStyle(color: textGrey)),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Text('Login', style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -113,7 +160,7 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
     );
   }
 
-  // --- Widgets Auxiliares para manter o padrão visual das imagens enviadas ---
+  // --- Widgets Auxiliares ---
 
   Widget _buildBackButton(BuildContext context) {
     return InkWell(
@@ -127,19 +174,24 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
     );
   }
 
-  Widget _buildTextField({required String hint, required IconData icon, TextInputType type = TextInputType.text, bool isImportant = false}) {
+  Widget _buildTextField({
+    required String hint, 
+    required IconData icon, 
+    required TextEditingController controller,
+    TextInputType type = TextInputType.text, 
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: lightGreyBackground,
         borderRadius: BorderRadius.circular(12),
-        border: isImportant ? Border.all(color: primaryRed.withOpacity(0.3)) : null,
       ),
       child: TextField(
+        controller: controller,
         keyboardType: type,
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.grey),
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
         ),
@@ -151,6 +203,7 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
     return Container(
       decoration: BoxDecoration(color: lightGreyBackground, borderRadius: BorderRadius.circular(12)),
       child: TextField(
+        controller: _senhaController,
         obscureText: !_isPasswordVisible,
         decoration: InputDecoration(
           prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
@@ -159,7 +212,7 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
             onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
           ),
           hintText: 'Senha de acesso',
-          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
         ),
@@ -177,14 +230,27 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           elevation: 0,
         ),
-        onPressed: () {
-          // Lógica para validar chave de acesso e criar conta ADM
-        },
-        child: const Text(
-          'Cadastrar Organizador',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        onPressed: _isLoading ? null : _validarCadastroAdm,
+        child: _isLoading 
+          ? const CircularProgressIndicator(color: Colors.white)
+          : const Text(
+              'Cadastrar',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
       ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('Já é um organizador? ', style: TextStyle(color: textGrey, fontSize: 16, fontFamily: 'sans-serif')),
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Text('Faça login', style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'sans-serif')),
+        ),
+      ],
     );
   }
 }

@@ -35,6 +35,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.2.3
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +58,7 @@ flutter:
 
   assets:
     - public/
+    - assets/images/
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
