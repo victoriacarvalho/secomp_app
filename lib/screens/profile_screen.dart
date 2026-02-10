@@ -3,7 +3,8 @@ import '../servicos/autenticacao_servico.dart';
 import 'onboarding_screen.dart';
 import 'personal_data_screen.dart';
 import 'create_event_screen.dart';
-import 'edit_profile_screen.dart'; // <--- IMPORTANTE: Importe a tela de edição
+import 'edit_profile_screen.dart';
+import 'home_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,10 +18,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final Color primaryRed = const Color(0xFF9A202F);
   final Color textGrey = const Color(0xFF666666);
 
-  // Função para recarregar a tela após editar
-  void _refresh() {
-    setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +56,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             centerTitle: true,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeScreen(),
+                  ), ),
             ),
             title: const Text(
               "Perfil",
@@ -74,7 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             actions: [
               GestureDetector(
                 onTap: () async {
-                  // Vai para a tela de edição e espera voltar
+
                   bool? atualizou = await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -82,10 +82,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
 
-                  // Se salvou alterações, atualiza a tela
-                  if (atualizou == true) {
-                    _refresh();
-                  }
                 },
                 child: Container(
                   margin: const EdgeInsets.only(right: 20),
@@ -170,8 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
 
                   const SizedBox(height: 35),
-                  // Usando valores fictícios por enquanto, mas pode conectar com o banco depois
-                  // Se quiser conectar real, use os contadores que fizemos na resposta anterior
+
                   _buildStatsContainer("05", "02", "00", primaryRed),
                   const SizedBox(height: 30),
 
