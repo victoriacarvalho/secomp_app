@@ -14,7 +14,7 @@ class CreateEventScreen extends StatefulWidget {
 class _CreateEventScreenState extends State<CreateEventScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
+  // Controllers Fixos
   final _tituloController = TextEditingController();
   final _localController = TextEditingController();
   final _dataController = TextEditingController();
@@ -23,16 +23,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _vagasController = TextEditingController();
   final _linkController = TextEditingController();
 
+  // Variáveis de Estado
   File? _imageFile;
   DateTime? _dataSelecionada;
   TimeOfDay? _horarioSelecionado;
 
+  // Lista Dinâmica para Palestrantes Extras
   final List<TextEditingController> _convidadosControllers = [];
+
   bool _carregando = false;
-  bool _isOnline = false;
+  bool _isOnline = false; // Controle do Switch Online/Presencial
 
   final Color primaryRed = const Color(0xFF9A202F);
 
+  // --- SELEÇÃO DE IMAGEM ---
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -43,6 +47,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
+  // --- SELEÇÃO DE DATA ---
   Future<void> _selecionarData(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -58,6 +63,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
+  // --- SELEÇÃO DE HORÁRIO ---
   Future<void> _selecionarHorario(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -78,21 +84,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
-  // --- LÓGICA DE SALVAR CORRIGIDA ---
+  // --- SALVAR EVENTO (COM IMAGEM LOCAL + ONLINE + PALESTRANTES) ---
   void _salvarEvento() async {
-    // 1. Validações
     if (!_formKey.currentState!.validate()) return;
 
     if (_dataSelecionada == null || _horarioSelecionado == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Selecione DATA e HORÁRIO.")),
+        const SnackBar(content: Text("Por favor, selecione a Data e o Horário.")),
       );
       return;
     }
 
     if (_isOnline && _linkController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("O Link é obrigatório para eventos online.")),
+        const SnackBar(content: Text("Para eventos online, o link é obrigatório.")),
       );
       return;
     }
@@ -101,10 +106,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
     try {
       final authService = AutenticacaoServico();
-      String urlDaImagem = "";
+      String caminhoImagemFinal = "";
 
-      // 3. Combinação de Data e Hora
-      final DateTime dataCompleta = DateTime(
+      if (_imageFile != null) {
+        caminhoImagemFinal = await authService.uploadImagemImgBB(_imageFile!);
+      }
+
+      // 2. COMBINAR DATA + HORA
+      final DateTime dataFinal = DateTime(
         _dataSelecionada!.year,
         _dataSelecionada!.month,
         _dataSelecionada!.day,
@@ -112,25 +121,31 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _horarioSelecionado!.minute,
       );
 
-      // 4. Salvar no Firestore
+      // 3. PREPARAR LISTA DE PALESTRANTES
+      List<String> convidados = _convidadosControllers
+          .map((c) => c.text.trim())
+          .where((t) => t.isNotEmpty)
+          .toList();
+
+      // 4. CRIAR O EVENTO NA LISTA LOCAL
       String? erro = await authService.criarEvento(
         titulo: _tituloController.text.trim(),
-        local: _localController.text.trim(),
-        data: dataCompleta,
+        local: _localController.text.trim(), // Se for online, o serviço pode ignorar ou usar como backup
+        data: dataFinal,
         descricao: _descricaoController.text.trim(),
         vagas: int.tryParse(_vagasController.text) ?? 0,
-        palestrantesConvidados: _convidadosControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList(),
+        palestrantesConvidados: convidados,
         isOnline: _isOnline,
         link: _isOnline ? _linkController.text.trim() : null,
-        imageUrl: urlDaImagem, // Passa a URL gerada pelo Storage
+        imageUrl: caminhoImagemFinal, // Caminho seguro da imagem salva
       );
 
       setState(() => _carregando = false);
 
       if (erro == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Evento salvo com sucesso!")));
-          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Evento criado com sucesso!")));
+          Navigator.pop(context); // Volta para a tela anterior
         }
       } else {
         if (mounted) {
@@ -139,9 +154,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       }
     } catch (e) {
       setState(() => _carregando = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro interno: $e")));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro interno: $e")));
     }
   }
 
@@ -165,6 +178,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- CAMPO DE FOTO ---
               _buildLabel("Foto de Capa"),
               GestureDetector(
                 onTap: _pickImage,
@@ -192,6 +206,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
               ),
 
+              // --- CAMPOS BÁSICOS ---
               _buildLabel("Título do Evento"),
               _buildTextField(_tituloController, "Ex: Palestra sobre IA"),
 
@@ -199,6 +214,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               _buildTextField(_localController, "Ex: Auditório Central ou Google Meet"),
 
               const SizedBox(height: 20),
+
+              // --- SWITCH ONLINE ---
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8F9FA),
@@ -216,6 +233,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
               ),
 
+              // Se for Online, mostra campo de Link
               if (_isOnline) ...[
                 _buildLabel("Link da Reunião"),
                 _buildTextField(
@@ -225,6 +243,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
               ],
 
+              // --- DATA E HORA ---
               Row(
                 children: [
                   Expanded(
@@ -268,8 +287,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               _buildTextField(_descricaoController, "Detalhes sobre o evento...", maxLines: 3),
 
               const SizedBox(height: 25),
+
+              // --- SEÇÃO DE PALESTRANTES EXTRAS ---
               _buildPalestrantesHeader(),
 
+              // Lista os campos extras de palestrantes
               ..._convidadosControllers.map((controller) => Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: _buildTextField(
@@ -281,7 +303,22 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               )),
 
               const SizedBox(height: 40),
-              _buildSaveButton(),
+
+              // --- BOTÃO SALVAR ---
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _carregando ? null : _salvarEvento,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryRed,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                  child: _carregando
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("SALVAR EVENTO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
               const SizedBox(height: 20),
             ],
           ),
@@ -289,6 +326,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       ),
     );
   }
+
+  // --- WIDGETS AUXILIARES ---
 
   Widget _buildLabel(String text) {
     return Padding(
@@ -319,11 +358,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey, size: 20) : null,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: InputBorder.none,
+          // Botão de remover só aparece para convidados extras
           suffixIcon: isConvidado
               ? IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red), onPressed: onDelete)
               : null,
         ),
-        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+        validator: (v) {
+          if (v!.isEmpty) return "Obrigatório";
+          return null;
+        },
       ),
     );
   }
@@ -333,30 +376,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const Text("Palestrantes Extras", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-        if (_convidadosControllers.length < 3)
+        // Limita a 5 palestrantes extras para não poluir a tela
+        if (_convidadosControllers.length < 5)
           TextButton.icon(
             onPressed: () => setState(() => _convidadosControllers.add(TextEditingController())),
             icon: Icon(Icons.add, color: primaryRed),
             label: Text("Adicionar", style: TextStyle(color: primaryRed)),
           ),
       ],
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        onPressed: _carregando ? null : _salvarEvento,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryRed,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        ),
-        child: _carregando
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Text("SALVAR EVENTO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
     );
   }
 }

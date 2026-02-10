@@ -2,22 +2,33 @@ import 'package:flutter/material.dart';
 import '../servicos/autenticacao_servico.dart';
 import 'onboarding_screen.dart';
 import 'personal_data_screen.dart';
-import 'create_event_screen.dart'; // IMPORTAÇÃO NECESSÁRIA
+import 'create_event_screen.dart';
+import 'edit_profile_screen.dart'; // <--- IMPORTANTE: Importe a tela de edição
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final AutenticacaoServico authService = AutenticacaoServico();
-    const Color primaryRed = Color(0xFF9A202F);
-    const Color textGrey = Color(0xFF666666);
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
 
+class _ProfileScreenState extends State<ProfileScreen> {
+  final AutenticacaoServico authService = AutenticacaoServico();
+  final Color primaryRed = const Color(0xFF9A202F);
+  final Color textGrey = const Color(0xFF666666);
+
+  // Função para recarregar a tela após editar
+  void _refresh() {
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
       future: authService.getDadosUsuarioLogado(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
+          return Scaffold(
             body: Center(child: CircularProgressIndicator(color: primaryRed)),
           );
         }
@@ -31,7 +42,14 @@ class ProfileScreen extends StatelessWidget {
         var dados = snapshot.data!;
         String nome = dados['nome'] ?? "Usuário";
         String email = dados['email'] ?? "Sem e-mail";
-        bool isAdmin = dados['role'] == 'admin';
+        String? fotoUrl = dados['fotoUrl'];
+        bool isAdmin = dados['role'] == 'admin'; // ou verifique o email @ufop
+
+        // Tratamento da imagem (Rede ou Inicial)
+        ImageProvider? imageProvider;
+        if (fotoUrl != null && fotoUrl.isNotEmpty) {
+          imageProvider = NetworkImage(fotoUrl);
+        }
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -52,6 +70,34 @@ class ProfileScreen extends StatelessWidget {
                 color: Colors.black87,
               ),
             ),
+            // --- AQUI ESTÁ O LÁPIS ---
+            actions: [
+              GestureDetector(
+                onTap: () async {
+                  // Vai para a tela de edição e espera voltar
+                  bool? atualizou = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditProfileScreen(dadosAtuais: dados),
+                    ),
+                  );
+
+                  // Se salvou alterações, atualiza a tela
+                  if (atualizou == true) {
+                    _refresh();
+                  }
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(right: 20),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.red[50], // Fundo vermelhinho claro
+                  ),
+                  child: Icon(Icons.edit, size: 20, color: primaryRed),
+                ),
+              )
+            ],
           ),
           body: SingleChildScrollView(
             child: Padding(
@@ -64,16 +110,26 @@ class ProfileScreen extends StatelessWidget {
                   Center(
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 55,
-                          backgroundColor: primaryRed.withOpacity(0.1),
-                          child: Text(
-                            nome.isNotEmpty ? nome[0].toUpperCase() : "?",
-                            style: const TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                              color: primaryRed,
-                            ),
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+                          ),
+                          child: CircleAvatar(
+                            radius: 55,
+                            backgroundColor: primaryRed.withOpacity(0.1),
+                            backgroundImage: imageProvider,
+                            child: imageProvider == null
+                                ? Text(
+                              nome.isNotEmpty ? nome[0].toUpperCase() : "?",
+                              style: TextStyle(
+                                fontSize: 40,
+                                fontWeight: FontWeight.bold,
+                                color: primaryRed,
+                              ),
+                            )
+                                : null,
                           ),
                         ),
                         const SizedBox(height: 15),
@@ -89,7 +145,7 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 5),
                         Text(
                           email,
-                          style: const TextStyle(fontSize: 14, color: textGrey),
+                          style: TextStyle(fontSize: 14, color: textGrey),
                         ),
                         if (isAdmin)
                           Container(
@@ -99,7 +155,7 @@ class ProfileScreen extends StatelessWidget {
                               color: primaryRed.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
+                            child: Text(
                               "ORGANIZADOR",
                               style: TextStyle(
                                 color: primaryRed,
@@ -114,15 +170,20 @@ class ProfileScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 35),
-                  _buildStatsContainer(primaryRed),
+                  // Usando valores fictícios por enquanto, mas pode conectar com o banco depois
+                  // Se quiser conectar real, use os contadores que fizemos na resposta anterior
+                  _buildStatsContainer("05", "02", "00", primaryRed),
                   const SizedBox(height: 30),
 
                   // Menu de Opções
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                        boxShadow: [
+                          BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10, offset: const Offset(0,5))
+                        ]
                     ),
                     child: Column(
                       children: [
@@ -184,8 +245,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- Widgets Auxiliares permanecem os mesmos ---
-  Widget _buildStatsContainer(Color color) {
+  Widget _buildStatsContainer(String inscritos, String checkin, String certificados, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
@@ -202,11 +262,11 @@ class ProfileScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem("Inscritos", "05", color),
+          _buildStatItem("Inscritos", inscritos, color),
           _buildVerticalDivider(),
-          _buildStatItem("Check-in", "02", color),
+          _buildStatItem("Check-in", checkin, color),
           _buildVerticalDivider(),
-          _buildStatItem("Certificados", "00", color),
+          _buildStatItem("Certificados", certificados, color),
         ],
       ),
     );

@@ -10,7 +10,7 @@ class PersonalDataScreen extends StatefulWidget {
 
 class _PersonalDataScreenState extends State<PersonalDataScreen> {
   final AutenticacaoServico _authService = AutenticacaoServico();
-  
+
   final Color primaryRed = const Color(0xFF9A202F);
   final Color lightGrey = const Color(0xFFF3F5F7);
 
@@ -48,7 +48,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
           }
 
           var dados = snapshot.data!;
-          
+
           String nome = dados['nome'] ?? "Não informado";
           String email = dados['email'] ?? "Não informado";
           String curso = dados['curso'] ?? "Não informado";
@@ -61,52 +61,24 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                 const Text(
                   "Informações da Conta",
                   style: TextStyle(
-                    fontSize: 16, 
-                    fontWeight: FontWeight.bold, 
-                    color: Colors.black87,
-                    fontFamily: 'sans-serif'
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontFamily: 'sans-serif'
                   ),
                 ),
                 const SizedBox(height: 25),
 
                 _buildDataField("Nome Completo", nome, Icons.person_outline),
                 const SizedBox(height: 20),
-                
+
                 _buildDataField("E-mail Institucional", email, Icons.email_outlined),
                 const SizedBox(height: 20),
-                
+
                 _buildDataField("Curso", curso, Icons.school_outlined),
-                
+
                 const SizedBox(height: 50),
-                
-                // Botão com borda mais destacada
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      // Aumentamos a largura para 2.0 para a borda ficar mais visível
-                      side: BorderSide(color: primaryRed, width: 2.0), 
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("A edição de dados será implementada em breve."),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    child: Text(
-                      "Editar Informações", 
-                      style: TextStyle(
-                        color: primaryRed, 
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16
-                      )
-                    ),
-                  ),
-                ),
+
               ],
             ),
           );
@@ -122,10 +94,10 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 13, 
-            color: Colors.grey, 
-            fontWeight: FontWeight.w500,
-            fontFamily: 'sans-serif'
+              fontSize: 13,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'sans-serif'
           ),
         ),
         const SizedBox(height: 10),
@@ -144,10 +116,10 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                 child: Text(
                   value,
                   style: const TextStyle(
-                    fontSize: 16, 
-                    color: Colors.black87, 
-                    fontWeight: FontWeight.w400,
-                    fontFamily: 'sans-serif'
+                      fontSize: 16,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w400,
+                      fontFamily: 'sans-serif'
                   ),
                 ),
               ),

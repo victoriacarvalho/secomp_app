@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../servicos/autenticacao_servico.dart'; // Importe seu serviço
+import 'dart:io';
+import '../servicos/autenticacao_servico.dart';
 import 'event_detail_screen.dart';
 
-class AllEventsScreen extends StatelessWidget {
+class AllEventsScreen extends StatefulWidget {
   const AllEventsScreen({super.key});
+
+  @override
+  State<AllEventsScreen> createState() => _AllEventsScreenState();
+}
+
+class _AllEventsScreenState extends State<AllEventsScreen> {
+  final AutenticacaoServico _authService = AutenticacaoServico();
 
   @override
   Widget build(BuildContext context) {
@@ -18,175 +26,131 @@ class AllEventsScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Eventos Populares",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black),
-        ),
+        title: const Text("Eventos", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            const Text(
-              "Todos os eventos",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _authService.getEventosStream(),
+          builder: (context, snapshot) {
 
-            // --- AQUI ENTRA O STREAM BUILDER ---
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: AutenticacaoServico().getEventos(), // Sua função no serviço
-                builder: (context, snapshot) {
-                  // 1. Estado de Carregamento
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator(color: Color(0xFF9A202F)));
-                  }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-                  // 2. Estado de Erro
-                  if (snapshot.hasError) {
-                    return const Center(child: Text("Erro ao carregar eventos."));
-                  }
+            if (snapshot.hasError) {
+              return const Center(child: Text("Erro ao carregar eventos."));
+            }
 
-                  // 3. Estado Vazio
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text("Nenhum evento encontrado."));
-                  }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Center(child: Text("Nenhum evento encontrado."));
+            }
 
-                  // 4. Dados Carregados
-                  var docs = snapshot.data!.docs;
+            var docs = snapshot.data!.docs;
 
-                  return GridView.builder(
-                    itemCount: docs.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 15,
-                      mainAxisSpacing: 15,
-                      childAspectRatio: 0.7,
-                    ),
-                    itemBuilder: (context, index) {
-                      // Pega os dados do documento e converte para Map
-                      Map<String, dynamic> data = docs[index].data() as Map<String, dynamic>;
-                      return _buildGridCard(context, data);
-                    },
-                  );
-                },
+            return GridView.builder(
+              itemCount: docs.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 15,
+                mainAxisSpacing: 15,
+                childAspectRatio: 0.7,
               ),
-            ),
-          ],
+              itemBuilder: (context, index) {
+                var doc = docs[index];
+                var dados = doc.data() as Map<String, dynamic>;
+
+
+                dados['id'] = doc.id;
+                if (dados['data'] is Timestamp) {
+                  dados['data'] = (dados['data'] as Timestamp).toDate();
+                }
+
+                return _buildGridCard(context, dados);
+              },
+            );
+          },
         ),
       ),
     );
   }
 
   Widget _buildGridCard(BuildContext context, Map<String, dynamic> event) {
+    String imageUrl = event['imageUrl'] ?? "";
+    ImageProvider imagemBg;
+
+
+    if (imageUrl.startsWith('http')) {
+      imagemBg = NetworkImage(imageUrl);
+    } else if (imageUrl.isNotEmpty) {
+      imagemBg = FileImage(File(imageUrl));
+    } else {
+      imagemBg = const AssetImage('assets/images/event_placeholder.jpg');
+    }
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => EventDetailScreen(eventData: event),
-          ),
+          MaterialPageRoute(builder: (context) => EventDetailScreen(eventData: event)),
         );
       },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5)],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // IMAGEM
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(20)),
-                  child: Image.network(
-                    event['imageUrl'] != null && event['imageUrl'].toString().isNotEmpty
-                        ? event['imageUrl']
-                        : 'https://via.placeholder.com/150', // Placeholder se não tiver imagem
-                    height: 120,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(height: 120, color: Colors.grey[300], child: const Icon(Icons.broken_image)),
+            // Imagem
+            Expanded( // Usei Expanded para a imagem ocupar o espaço disponível e manter o layout uniforme
+              flex: 3,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(image: imagemBg, fit: BoxFit.cover),
                   ),
                 ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
-                  ),
-                ),
-              ],
+              ),
             ),
-
-            // INFORMAÇÕES
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event['titulo'] ?? 'Sem Título',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          event['isOnline'] == true ? "Online" : (event['local'] ?? 'A definir'),
+            // Infos
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                        event['titulo'] ?? "Sem título",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event['isOnline'] == true ? "Online" : (event['local'] ?? "A definir"),
                           style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    "${event['vagas'] ?? 0} vagas",
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: const TextSpan(
-                      style: TextStyle(fontSize: 14),
-                      children: [
-                        TextSpan(
-                          text: "R\$0",
-                          style: TextStyle(color: Color(0xFFA93244), fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: "/pessoa",
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        Text(
+                            "${event['vagas']} vagas",
+                            style: const TextStyle(fontSize: 12, color: Colors.grey)
                         ),
                       ],
                     ),
-                  )
-                ],
+                  ],
+                ),
               ),
-            ),
+            )
           ],
         ),
       ),

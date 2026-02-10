@@ -1,6 +1,8 @@
-import 'dart:io'; // Necessário para File
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 
 class AutenticacaoServico {
@@ -8,7 +10,20 @@ class AutenticacaoServico {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
 
-  // --- CADASTRO DE PARTICIPANTE ---
+  static final List<Map<String, dynamic>> _eventosLocais = [];
+
+
+  List<String> getListaCursos() {
+    return [
+      "Engenharia de Computação",
+      "Sistemas de Informação",
+      "Engenharia Elétrica",
+      "Engenharia de Produção",
+
+    ];
+  }
+
+  // --- CADASTRO USUÁRIO ---
   Future<String?> cadastrarUsuario({
     required String nome,
     required String email,
@@ -40,7 +55,8 @@ class AutenticacaoServico {
     }
   }
 
-  // --- CADASTRO DE ADMIN ---
+
+  // --- CADASTRO ADMIN  ---
   Future<String?> cadastrarAdm({
     required String nome,
     required String email,
@@ -83,19 +99,18 @@ class AutenticacaoServico {
     try {
       await _firebaseAuth.signInWithEmailAndPassword(email: email, password: senha);
       return null;
-    } on FirebaseAuthException catch (e) {
-      return "E-mail ou senha incorretos.";
+    } catch (e) {
+      return "Erro ao logar: ${e.toString()}";
     }
   }
 
-  // --- RECUPERAR SENHA ---
+  // --- RECUPERAR SENHA  ---
   Future<String?> recuperarSenha({required String email}) async {
     try {
-      await _firebaseAuth.setLanguageCode("pt-br");
       await _firebaseAuth.sendPasswordResetEmail(email: email);
       return null;
     } catch (e) {
-      return "Erro ao resetar senha.";
+      return "Erro ao enviar e-mail.";
     }
   }
 
@@ -120,7 +135,6 @@ class AutenticacaoServico {
     return 'participante';
   }
 
-
   // --- CRIAR EVENTO ---
   Future<String?> criarEvento({
     required String titulo,
@@ -135,37 +149,188 @@ class AutenticacaoServico {
   }) async {
     try {
       User? user = _firebaseAuth.currentUser;
-      if (user == null) return "Usuário não autenticado.";
+      String nomeCriador = user?.displayName ?? "Organizador";
+      String uidCriador = user?.uid ?? "";
 
-      String uid = user.uid;
-      DocumentSnapshot userDoc = await _firestore.collection('usuarios').doc(uid).get();
-      String nomeUsuarioLogado = userDoc.exists ? (userDoc.get('nome') ?? "Organizador") : "Organizador";
-
-      Map<String, dynamic> dadosDoEvento = {
+      await _firestore.collection('eventos').add({
         'titulo': titulo,
         'local': local,
         'data': Timestamp.fromDate(data),
         'descricao': descricao,
         'vagas': vagas,
+        'vagasIniciais': vagas,
         'isOnline': isOnline,
-        'palestrantePrincipal': nomeUsuarioLogado,
+        'palestrantePrincipal': nomeCriador,
+        'organizadorUid': uidCriador,
         'palestrantesConvidados': palestrantesConvidados,
-        'organizadorUid': uid,
-        'createdAt': FieldValue.serverTimestamp(),
         'link': link ?? "",
         'imageUrl': imageUrl ?? "",
-      };
-
-      await _firestore.collection('eventos').add(dadosDoEvento);
+        'criadoEm': FieldValue.serverTimestamp(),
+      });
       return null;
     } catch (e) {
       return "Erro ao criar evento: $e";
     }
   }
 
-  // --- LISTAR EVENTOS ---
-  Stream<QuerySnapshot> getEventos() {
-    // Ordena pela data de criação decrescente
-    return _firestore.collection('eventos').orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> getEventosStream() {
+    return _firestore
+        .collection('eventos')
+        .orderBy('data', descending: false)
+        .snapshots();
+  }
+
+  // --- 3. INSCREVER PARTICIPANTE ---
+  Future<String?> inscreverParticipante({
+    required String eventoId,
+    required String nomeCompleto,
+    required String email,
+    required String cpf,
+    required String telefone,
+  }) async {
+    try {
+      User? user = _firebaseAuth.currentUser;
+      if (user == null) return "Usuário não logado";
+
+      var query = await _firestore
+          .collection('inscricoes')
+          .where('eventoId', isEqualTo: eventoId)
+          .where('uidUsuario', isEqualTo: user.uid)
+          .get();
+
+      if (query.docs.isNotEmpty) return "Você já está inscrito.";
+
+      DocumentSnapshot docEvento = await _firestore.collection('eventos').doc(eventoId).get();
+      int vagasAtuais = docEvento['vagas'];
+
+      if (vagasAtuais <= 0) return "Evento lotado.";
+
+      WriteBatch batch = _firestore.batch();
+      DocumentReference inscricaoRef = _firestore.collection('inscricoes').doc();
+
+      batch.set(inscricaoRef, {
+        'eventoId': eventoId,
+        'uidUsuario': user.uid,
+        'nomeParticipante': nomeCompleto,
+        'email': email,
+        'cpf': cpf,
+        'telefone': telefone,
+        'dataInscricao': FieldValue.serverTimestamp(),
+        'presencaConfirmada': false,
+      });
+
+      DocumentReference eventoRef = _firestore.collection('eventos').doc(eventoId);
+      batch.update(eventoRef, {
+        'vagas': FieldValue.increment(-1)
+      });
+
+      await batch.commit();
+      return null;
+    } catch (e) {
+      return "Erro na inscrição: $e";
+    }
+  }
+
+  // ---IMAGEM UPLOAD ---
+  Future<String> uploadImagemImgBB(File imagem) async {
+    try {
+
+      const String apiKey = 'f30d8276f615120876f57a3e1dab86f5';
+
+      var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey')
+      );
+      request.files.add(await http.MultipartFile.fromPath('image', imagem.path));
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        var responseData = await response.stream.bytesToString();
+        var jsonResponse = json.decode(responseData);
+        return jsonResponse['data']['url'];
+      } else {
+        return "";
+      }
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // --- EDITAR EVENTO ---
+  Future<String?> atualizarEvento({
+    required String docId,
+    required String titulo,
+    required String local,
+    required DateTime data,
+    required String descricao,
+    required int vagas,
+    required List<String> palestrantesConvidados,
+    required bool isOnline,
+    String? link,
+    String? imageUrl,
+  }) async {
+    try {
+      await _firestore.collection('eventos').doc(docId).update({
+        'titulo': titulo,
+        'local': local,
+        'data': Timestamp.fromDate(data),
+        'descricao': descricao,
+        'vagas': vagas,
+        'isOnline': isOnline,
+        'palestrantesConvidados': palestrantesConvidados,
+        'link': link ?? "",
+        'imageUrl': imageUrl ?? "",
+      });
+      return null;
+    } catch (e) {
+      return "Erro ao atualizar: $e";
+    }
+  }
+
+  // --- EXCLUIR EVENTO ---
+  Future<String?> excluirEvento(String docId) async {
+    try {
+      await _firestore.collection('eventos').doc(docId).delete();
+
+      var inscricoes = await _firestore.collection('inscricoes').where('eventoId', isEqualTo: docId).get();
+      for (var doc in inscricoes.docs) {
+        await doc.reference.delete();
+      }
+
+      return null;
+    } catch (e) {
+      return "Erro ao excluir: $e";
+    }
+  }
+
+  // --- ATUALIZAR DADOS DO USUÁRIO ---
+  Future<String?> atualizarPerfilUsuario({
+    required String nome,
+    required String curso,
+    String? fotoUrl,
+  }) async {
+    try {
+      User? user = _firebaseAuth.currentUser;
+      if (user == null) return "Usuário não logado";
+
+      await user.updateDisplayName(nome);
+
+      if (fotoUrl != null) await user.updatePhotoURL(fotoUrl);
+
+      Map<String, dynamic> dadosAtualizar = {
+        'nome': nome,
+        'curso': curso,
+      };
+
+      if (fotoUrl != null) {
+        dadosAtualizar['fotoUrl'] = fotoUrl;
+      }
+
+      await _firestore.collection('usuarios').doc(user.uid).update(dadosAtualizar);
+
+      return null;
+    } catch (e) {
+      return "Erro ao atualizar perfil: $e";
+    }
   }
 }
