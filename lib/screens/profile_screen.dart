@@ -22,17 +22,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final Color primaryRed = const Color(0xFF9A202F);
   final Color textGrey = const Color(0xFF666666);
 
-  // Variáveis para armazenar os dados carregados
   Map<String, dynamic>? _dadosUsuario;
   int _stat1 = 0, _stat2 = 0, _stat3 = 0;
   bool _isAdmin = false;
 
-  // FUNÇÃO MESTRE: Aguarda todos os Futures antes de liberar a UI
   Future<void> _carregarDadosCompletos() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // Dispara as consultas ao Firestore em paralelo para melhor performance
     final resultados = await Future.wait([
       authService.getDadosUsuarioLogado(),
       _buscarEstatisticas(user.uid),
@@ -76,8 +73,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .get();
 
       _stat1 = minhasInscricoes.count ?? 0;
-      _stat2 = 0; // Pode ser usado para Presenças futuras
-      _stat3 = 0; // Pode ser usado para Certificados
+      _stat2 = 0;
+      _stat3 = 0;
     }
   }
 
@@ -86,7 +83,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return FutureBuilder(
       future: _carregarDadosCompletos(),
       builder: (context, snapshot) {
-        // Enquanto carrega, mostra apenas o loading centralizado
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
             backgroundColor: Colors.white,
@@ -119,7 +115,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildHeader(nome, email, fotoUrl),
                     const SizedBox(height: 35),
                     
-                    // Stats já aparecem com valores reais aqui
                     _buildStatsContainer(
                       _stat1.toString(), 
                       _stat2.toString(), 
@@ -232,22 +227,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildVerticalDivider() => Container(height: 30, width: 1, color: Colors.grey.withOpacity(0.2));
 
+  Widget _buildDivider() => Divider(
+    height: 1, 
+    thickness: 0.5, 
+    color: Colors.grey.withOpacity(0.2), 
+    indent: 20, 
+    endIndent: 20
+  );
+
   Widget _buildMenuContainer(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        // Sombra leve para profundidade
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+        ],
         border: Border.all(color: Colors.grey.withOpacity(0.1)),
       ),
       child: Column(
         children: [
           if (_isAdmin) ...[
             _buildMenuItem(Icons.add_circle_outline, "Criar Novo Evento", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateEventScreen()))),
+            _buildDivider(),
             _buildMenuItem(Icons.playlist_add_check, "Gerenciar Presença", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckInScreen()))),
-            const Divider(),
+            _buildDivider(),
           ],
-          _buildMenuItem(Icons.person_outline, "Dados Pessoais", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalDataScreen()))),
+          _buildMenuItem(
+            Icons.person_outline, 
+            "Dados Pessoais", 
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalDataScreen()))
+          ),
+          _buildDivider(),
           _buildMenuItem(Icons.bookmark_border, "Eventos Salvos", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedEventsScreen()))),
+          _buildDivider(),
           _buildMenuItem(Icons.logout, "Sair da conta", color: Colors.redAccent, onTap: () async {
             await authService.deslogarUsuario();
             if (mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const OnboardingScreen()), (route) => false);
@@ -261,7 +275,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListTile(
       onTap: onTap,
       leading: Icon(icon, color: color == Colors.black87 ? Colors.grey[600] : color, size: 22),
-      title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: color)),
+      // Ajuste fino de alinhamento e estilo
+      title: Text(
+        title.trim(), 
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: color)
+      ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
     );
   }
