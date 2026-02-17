@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../servicos/autenticacao_servico.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   final String eventTitle;
-  final String eventId; // <--- ADICIONADO: Necessário para o banco de dados
+  final String eventId;
 
   const SubscriptionScreen({
     super.key,
     required this.eventTitle,
-    required this.eventId
+    required this.eventId,
   });
 
   @override
@@ -19,77 +19,100 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
+  // Controllers para captura de dados
   final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
-  final _cpfController = TextEditingController();
-  final _telefoneController = TextEditingController();
+  final _matriculaController = TextEditingController();
 
   bool _isLoading = false;
   final Color primaryColor = const Color(0xFFA93244);
 
-  // --- LÓGICA DE SALVAR NO BANCO ---
+  // --- LÓGICA DE INSCRIÇÃO COM TRANSAÇÃO ---
   void _confirmarInscricao() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _showError("Usuário não identificado.");
+      setState(() => _isLoading = false);
+      return;
+    }
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final firestore = FirebaseFirestore.instance;
+      final eventRef = firestore.collection('eventos').doc(widget.eventId);
 
-
-      if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Erro: Usuário não identificado. Faça login novamente.")),
-          );
-          setState(() => _isLoading = false);
+      // Transação para garantir que a vaga não seja ocupada simultaneamente
+      await firestore.runTransaction((transaction) async {
+    
+        DocumentSnapshot eventSnapshot = await transaction.get(eventRef);
+        if (!eventSnapshot.exists) {
+          throw Exception("Evento não encontrado.");
         }
-        return;
-      }
 
-      final authService = AutenticacaoServico();
+        var eventData = eventSnapshot.data() as Map<String, dynamic>;
+        int vagasAtuais = (eventData['vagas'] is int)
+            ? eventData['vagas']
+            : (int.tryParse(eventData['vagas'].toString()) ?? 0);
 
+        if (vagasAtuais <= 0) {
+          throw Exception("Vagas esgotadas para este evento.");
+        }
+=
+        final queryDuplicidade = await firestore
+            .collection('inscricoes')
+            .where('eventId', isEqualTo: widget.eventId)
+            .where('matricula', isEqualTo: _matriculaController.text.trim())
+            .get();
 
-      String? erro = await authService.inscreverParticipante(
-        eventoId: widget.eventId,
-        nomeCompleto: _nomeController.text.trim(),
-        email: _emailController.text.trim(),
-        cpf: _cpfController.text.trim(),
-        telefone: _telefoneController.text.trim(),
-      );
+        if (queryDuplicidade.docs.isNotEmpty) {
+          throw Exception("Esta matrícula já está inscrita neste evento.");
+        }
+
+        final inscricaoRef = firestore.collection('inscricoes').doc();
+        final novaInscricao = {
+          'eventId': widget.eventId,
+          'eventTitle': widget.eventTitle,
+          'uidParticipante': user.uid,
+          'nomeUsuario': _nomeController.text.trim(),
+          'emailUsuario': _emailController.text.trim(),
+          'matricula': _matriculaController.text.trim(),
+          'dataInscricao': FieldValue.serverTimestamp(),
+          'presencaConfirmada': false,
+        };
+
+        transaction.set(inscricaoRef, novaInscricao);
+        transaction.update(eventRef, {
+          'vagas': FieldValue.increment(-1),
+          'numeroInscritos': FieldValue.increment(1),
+        });
+      });
 
       if (!mounted) return;
-
       setState(() => _isLoading = false);
+      Navigator.pop(context, true); // Sucesso: retorna para atualizar a tela anterior
 
-      if (erro == null) {
-        Navigator.pop(context, true);
-      } else {
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(erro),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erro inesperado: $e")),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      String msg = e.toString().replaceAll("Exception: ", "");
+      _showError(msg);
     }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+    );
   }
 
   @override
   void dispose() {
     _nomeController.dispose();
     _emailController.dispose();
-    _cpfController.dispose();
-    _telefoneController.dispose();
+    _matriculaController.dispose();
     super.dispose();
   }
 
@@ -101,63 +124,65 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text("Inscrição", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Inscreva-se em:\n${widget.eventTitle}",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                "Confirme seus dados para garantir sua vaga e receber o certificado.",
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-              const SizedBox(height: 30),
-
-              _buildLabel("Nome Completo"),
-              _buildTextField(_nomeController, "Seu nome completo", Icons.person),
-
-              _buildLabel("E-mail Institucional"),
-              _buildTextField(_emailController, "email@aluno.ufop.edu.br", Icons.email, isEmail: true),
-
-              _buildLabel("CPF"),
-              _buildTextField(_cpfController, "000.000.000-00", Icons.badge, isNumber: true),
-
-              _buildLabel("Telefone / WhatsApp"),
-              _buildTextField(_telefoneController, "(31) 90000-0000", Icons.phone, isNumber: true),
-
-              const SizedBox(height: 40),
-
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _confirmarInscricao,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                    height: 20, width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                      : const Text("CONFIRMAR INSCRIÇÃO", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+      // --- REMOVE O EFEITO DE ESTICAMENTO (OVERSCROLL) ---
+      body: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+        child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Inscreva-se em:\n${widget.eventTitle}",
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
-              )
-            ],
+                const SizedBox(height: 10),
+                const Text(
+                  "Confirme seus dados para garantir sua vaga e receber o certificado.",
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+                const SizedBox(height: 30),
+
+                _buildLabel("Nome Completo"),
+                _buildTextField(_nomeController, "Seu nome completo", Icons.person),
+
+                _buildLabel("E-mail Institucional"),
+                _buildTextField(_emailController, "email@aluno.ufop.edu.br", Icons.email, isEmail: true),
+
+                _buildLabel("Matrícula"),
+                _buildTextField(_matriculaController, "Ex: 20.1.0000", Icons.badge, isNumber: true),
+
+                const SizedBox(height: 40),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _confirmarInscricao,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20, width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text("CONFIRMAR INSCRIÇÃO", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                )
+              ],
+            ),
           ),
         ),
       ),
