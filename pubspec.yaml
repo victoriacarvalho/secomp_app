@@ -1,26 +1,30 @@
 name: secomp_app
-description: "A new Flutter project."
+description: "Aplicativo oficial da SECOMP - Gestão de eventos e certificados."
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.7
+  sdk: '>=3.10.7 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.2.3
+  
+  # Firebase
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
+  
+  # Utilidades
   intl: ^0.19.0
   image_picker: ^1.0.7
   path_provider: ^2.1.2
   path: ^1.9.0
   http: ^1.2.0
-
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
@@ -29,27 +33,29 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
 
+# Configuração do Ícone do Aplicativo
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path: "public/secomp_icone.png" # Caminho da sua imagem
-  background_color: "#FFFFFF"     # Fundo branco
-  adaptive_icon_background: "#FFFFFF" # Necessário para Android 8.0+
-  adaptive_icon_foreground: "public/secomp_icone.png" # A logo por cima do fundo
+  image_path: "public/secomp_icone.png"
+  background_color: "#FFFFFF"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "public/secomp_icone.png"
 
+# Configuração da Splash Screen (Tela de carregamento inicial)
 flutter_native_splash:
   color: "#E6E6E6"
-  # Para "remover" o ícone no Android 12, use a mesma cor do fundo no ícone
   android_12:
     color: "#E6E6E6"
-    icon_color: "#E6E6E6" # Isso faz o ícone ficar invisível (mesma cor do fundo)
-
+    icon_color: "#E6E6E6"
   fullscreen: true
   android: true
   ios: true
+
 flutter:
+  uses-material-design: true
+
+  # Registro de pastas de imagens e assets
   assets:
     - public/
     - assets/images/
-  uses-material-design: true
-
