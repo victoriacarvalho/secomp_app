@@ -60,7 +60,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         if (vagasAtuais <= 0) {
           throw Exception("Vagas esgotadas para este evento.");
         }
-=
+
         final queryDuplicidade = await firestore
             .collection('inscricoes')
             .where('eventId', isEqualTo: widget.eventId)
@@ -130,7 +130,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         title: const Text("Inscrição", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      // --- REMOVE O EFEITO DE ESTICAMENTO (OVERSCROLL) ---
       body: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
         child: SingleChildScrollView(
