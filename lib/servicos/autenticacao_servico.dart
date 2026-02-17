@@ -4,115 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-
 class AutenticacaoServico {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-
-  static final List<Map<String, dynamic>> _eventosLocais = [];
-
-
-  List<String> getListaCursos() {
-    return [
-      "Engenharia de Computação",
-      "Sistemas de Informação",
-      "Engenharia Elétrica",
-      "Engenharia de Produção",
-
-    ];
-  }
-
-  // --- CADASTRO USUÁRIO ---
-  Future<String?> cadastrarUsuario({
-    required String nome,
-    required String email,
-    required String senha,
-    required String curso,
-  }) async {
-    try {
-      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: senha,
-      );
-
-      await _firestore.collection('usuarios').doc(userCredential.user!.uid).set({
-        'nome': nome,
-        'email': email,
-        'role': 'participante',
-        'curso': curso,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      await userCredential.user?.updateDisplayName(nome);
-      return null;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') return "Este e-mail já está em uso.";
-      if (e.code == 'weak-password') return "A senha é muito fraca.";
-      return e.message;
-    } catch (e) {
-      return "Erro inesperado ao cadastrar participante.";
-    }
-  }
-
-
-  // --- CADASTRO ADMIN  ---
-  Future<String?> cadastrarAdm({
-    required String nome,
-    required String email,
-    required String senha,
-    required String tokenDigitado,
-  }) async {
-    try {
-      DocumentSnapshot snapshot = await _firestore.collection('configuracoes').doc('acesso').get();
-
-      if (!snapshot.exists) return "Erro de configuração no servidor.";
-
-      String tokenNoServidor = snapshot.get('token_adm');
-
-      if (tokenDigitado != tokenNoServidor) return "Chave de acesso inválida.";
-
-      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: senha,
-      );
-
-      await _firestore.collection('usuarios').doc(userCredential.user!.uid).set({
-        'nome': nome,
-        'email': email,
-        'role': 'admin',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      await userCredential.user?.updateDisplayName(nome);
-      return null;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') return "Este e-mail já está em uso.";
-      return e.message;
-    } catch (e) {
-      return "Erro ao validar chave: $e";
-    }
-  }
-
-  // --- LOGIN ---
-  Future<String?> logarUsuario({required String email, required String senha}) async {
-    try {
-      await _firebaseAuth.signInWithEmailAndPassword(email: email, password: senha);
-      return null;
-    } catch (e) {
-      return "Erro ao logar: ${e.toString()}";
-    }
-  }
-
-  // --- RECUPERAR SENHA  ---
-  Future<String?> recuperarSenha({required String email}) async {
-    try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
-      return null;
-    } catch (e) {
-      return "Erro ao enviar e-mail.";
-    }
-  }
+  static const String _imagemPadraoEvento = "assets/images/icea.png";
 
   // --- DADOS DO USUÁRIO ---
   Future<Map<String, dynamic>?> getDadosUsuarioLogado() async {
@@ -126,22 +22,104 @@ class AutenticacaoServico {
     }
   }
 
-  Future<String> getUserRole() async {
-    User? user = _firebaseAuth.currentUser;
-    if (user != null) {
-      DocumentSnapshot doc = await _firestore.collection('usuarios').doc(user.uid).get();
-      if (doc.exists) return doc.get('role');
+  // --- AUTENTICAÇÃO ---
+  Future<String?> logarUsuario({required String email, required String senha}) async {
+    try {
+      await _firebaseAuth.signInWithEmailAndPassword(email: email, password: senha);
+      return null;
+    } catch (e) {
+      return "E-mail ou senha incorretos.";
     }
-    return 'participante';
   }
 
-  // --- CRIAR EVENTO ---
+  Future<void> deslogarUsuario() async {
+    await _firebaseAuth.signOut();
+  }
+
+  Future<String?> recuperarSenha({required String email}) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+      return null;
+    } catch (e) {
+      return "Erro ao enviar e-mail de recuperação.";
+    }
+  }
+
+  // --- CADASTRO PARTICIPANTE (ALUNO) ---
+  Future<String?> cadastrarUsuario({
+    required String nome,
+    required String email,
+    required String matricula,
+    required String senha,
+    required String curso,
+  }) async {
+    try {
+      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: senha,
+      );
+
+      // Salva dados no Firestore incluindo a Matrícula
+      await _firestore.collection('usuarios').doc(userCredential.user!.uid).set({
+        'nome': nome,
+        'email': email,
+        'matricula': matricula,
+        'role': 'participante',
+        'curso': curso,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await userCredential.user?.updateDisplayName(nome);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') return "Este e-mail já está em uso.";
+      return "Erro ao cadastrar: ${e.message}";
+    } catch (e) {
+      return "Erro inesperado ao cadastrar.";
+    }
+  }
+
+  // --- CADASTRO ADMIN (ORGANIZADOR) ---
+  Future<String?> cadastrarAdm({
+    required String nome,
+    required String email,
+    required String senha,
+    required String tokenDigitado,
+  }) async {
+    try {
+      DocumentSnapshot snapshot = await _firestore.collection('configuracoes').doc('acesso').get();
+      if (!snapshot.exists) return "Erro de configuração no servidor.";
+
+      if (tokenDigitado != snapshot.get('token_adm')) return "Chave de acesso inválida.";
+
+      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: senha,
+      );
+
+      await _firestore.collection('usuarios').doc(userCredential.user!.uid).set({
+        'nome': nome,
+        'email': email,
+        'role': 'admin',
+        'eventosCriados': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await userCredential.user?.updateDisplayName(nome);
+      return null;
+    } catch (e) {
+      return "Erro ao validar chave administrativa.";
+    }
+  }
+
+  // --- GESTÃO DE EVENTOS ---
   Future<String?> criarEvento({
     required String titulo,
     required String local,
     required DateTime data,
     required String descricao,
     required int vagas,
+    required String nomePalestrante,
     required List<String> palestrantesConvidados,
     required bool isOnline,
     String? link,
@@ -149,8 +127,9 @@ class AutenticacaoServico {
   }) async {
     try {
       User? user = _firebaseAuth.currentUser;
-      String nomeCriador = user?.displayName ?? "Organizador";
-      String uidCriador = user?.uid ?? "";
+      if (user == null) return "Sessão expirada.";
+
+      String imagemFinal = (imageUrl == null || imageUrl.isEmpty) ? _imagemPadraoEvento : imageUrl;
 
       await _firestore.collection('eventos').add({
         'titulo': titulo,
@@ -159,104 +138,35 @@ class AutenticacaoServico {
         'descricao': descricao,
         'vagas': vagas,
         'vagasIniciais': vagas,
+        'numeroInscritos': 0,
         'isOnline': isOnline,
-        'palestrantePrincipal': nomeCriador,
-        'organizadorUid': uidCriador,
+        'palestrantePrincipal': nomePalestrante,
+        'organizadorUid': user.uid,
         'palestrantesConvidados': palestrantesConvidados,
         'link': link ?? "",
-        'imageUrl': imageUrl ?? "",
+        'imageUrl': imagemFinal,
         'criadoEm': FieldValue.serverTimestamp(),
       });
+
+      await _firestore.collection('usuarios').doc(user.uid).update({
+        'eventosCriados': FieldValue.increment(1),
+      });
+
       return null;
     } catch (e) {
-      return "Erro ao criar evento: $e";
+      return "Erro ao criar evento.";
     }
   }
 
   Stream<QuerySnapshot> getEventosStream() {
-    return _firestore
-        .collection('eventos')
-        .orderBy('data', descending: false)
-        .snapshots();
+    return _firestore.collection('eventos').orderBy('data', descending: false).snapshots();
   }
 
-  // --- 3. INSCREVER PARTICIPANTE ---
-  Future<String?> inscreverParticipante({
-    required String eventoId,
-    required String nomeCompleto,
-    required String email,
-    required String cpf,
-    required String telefone,
-  }) async {
-    try {
-      User? user = _firebaseAuth.currentUser;
-      if (user == null) return "Usuário não logado";
-
-      var query = await _firestore
-          .collection('inscricoes')
-          .where('eventoId', isEqualTo: eventoId)
-          .where('uidUsuario', isEqualTo: user.uid)
-          .get();
-
-      if (query.docs.isNotEmpty) return "Você já está inscrito.";
-
-      DocumentSnapshot docEvento = await _firestore.collection('eventos').doc(eventoId).get();
-      int vagasAtuais = docEvento['vagas'];
-
-      if (vagasAtuais <= 0) return "Evento lotado.";
-
-      WriteBatch batch = _firestore.batch();
-      DocumentReference inscricaoRef = _firestore.collection('inscricoes').doc();
-
-      batch.set(inscricaoRef, {
-        'eventoId': eventoId,
-        'uidUsuario': user.uid,
-        'nomeParticipante': nomeCompleto,
-        'email': email,
-        'cpf': cpf,
-        'telefone': telefone,
-        'dataInscricao': FieldValue.serverTimestamp(),
-        'presencaConfirmada': false,
-      });
-
-      DocumentReference eventoRef = _firestore.collection('eventos').doc(eventoId);
-      batch.update(eventoRef, {
-        'vagas': FieldValue.increment(-1)
-      });
-
-      await batch.commit();
-      return null;
-    } catch (e) {
-      return "Erro na inscrição: $e";
-    }
+  Future<DocumentSnapshot> getEventoById(String eventId) {
+    return _firestore.collection('eventos').doc(eventId).get();
   }
 
-  // ---IMAGEM UPLOAD ---
-  Future<String> uploadImagemImgBB(File imagem) async {
-    try {
-
-      const String apiKey = 'f30d8276f615120876f57a3e1dab86f5';
-
-      var request = http.MultipartRequest(
-          'POST',
-          Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey')
-      );
-      request.files.add(await http.MultipartFile.fromPath('image', imagem.path));
-      var response = await request.send();
-
-      if (response.statusCode == 200) {
-        var responseData = await response.stream.bytesToString();
-        var jsonResponse = json.decode(responseData);
-        return jsonResponse['data']['url'];
-      } else {
-        return "";
-      }
-    } catch (e) {
-      return "";
-    }
-  }
-
-  // --- EDITAR EVENTO ---
+  // --- EDIÇÃO E EXCLUSÃO ---
   Future<String?> atualizarEvento({
     required String docId,
     required String titulo,
@@ -270,7 +180,7 @@ class AutenticacaoServico {
     String? imageUrl,
   }) async {
     try {
-      await _firestore.collection('eventos').doc(docId).update({
+      Map<String, dynamic> updateData = {
         'titulo': titulo,
         'local': local,
         'data': Timestamp.fromDate(data),
@@ -279,58 +189,104 @@ class AutenticacaoServico {
         'isOnline': isOnline,
         'palestrantesConvidados': palestrantesConvidados,
         'link': link ?? "",
-        'imageUrl': imageUrl ?? "",
-      });
-      return null;
-    } catch (e) {
-      return "Erro ao atualizar: $e";
-    }
-  }
-
-  // --- EXCLUIR EVENTO ---
-  Future<String?> excluirEvento(String docId) async {
-    try {
-      await _firestore.collection('eventos').doc(docId).delete();
-
-      var inscricoes = await _firestore.collection('inscricoes').where('eventoId', isEqualTo: docId).get();
-      for (var doc in inscricoes.docs) {
-        await doc.reference.delete();
-      }
-
-      return null;
-    } catch (e) {
-      return "Erro ao excluir: $e";
-    }
-  }
-
-  // --- ATUALIZAR DADOS DO USUÁRIO ---
-  Future<String?> atualizarPerfilUsuario({
-    required String nome,
-    required String curso,
-    String? fotoUrl,
-  }) async {
-    try {
-      User? user = _firebaseAuth.currentUser;
-      if (user == null) return "Usuário não logado";
-
-      await user.updateDisplayName(nome);
-
-      if (fotoUrl != null) await user.updatePhotoURL(fotoUrl);
-
-      Map<String, dynamic> dadosAtualizar = {
-        'nome': nome,
-        'curso': curso,
       };
 
-      if (fotoUrl != null) {
-        dadosAtualizar['fotoUrl'] = fotoUrl;
-      }
+      if (imageUrl != null && imageUrl.isNotEmpty) updateData['imageUrl'] = imageUrl;
 
-      await _firestore.collection('usuarios').doc(user.uid).update(dadosAtualizar);
+      await _firestore.collection('eventos').doc(docId).update(updateData);
+      return null;
+    } catch (e) {
+      return "Erro ao atualizar evento.";
+    }
+  }
+
+  Future<String?> excluirEvento(String docId) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('eventos').doc(docId).get();
+      if (!doc.exists) return "Evento não encontrado.";
+      
+      String organizadorUid = doc['organizadorUid']; 
+
+      await _firestore.collection('eventos').doc(docId).delete();
+
+      // Limpa inscrições órfãs
+      var inscricoes = await _firestore.collection('inscricoes').where('eventId', isEqualTo: docId).get();
+      for (var d in inscricoes.docs) { await d.reference.delete(); }
+
+      await _firestore.collection('usuarios').doc(organizadorUid).update({
+        'eventosCriados': FieldValue.increment(-1),
+      });
 
       return null;
     } catch (e) {
-      return "Erro ao atualizar perfil: $e";
+      return "Erro ao excluir evento.";
     }
+  }
+
+  // --- IMAGEM E PERFIL ---
+  Future<String> uploadImagemImgBB(File imagem) async {
+    try {
+      const String apiKey = 'f30d8276f615120876f57a3e1dab86f5';
+      var request = http.MultipartRequest('POST', Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey'));
+      request.files.add(await http.MultipartFile.fromPath('image', imagem.path));
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        var responseData = await response.stream.bytesToString();
+        return json.decode(responseData)['data']['url'];
+      }
+      return "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  Future<String?> atualizarPerfilUsuario({required String nome, String? curso, String? fotoUrl}) async {
+    try {
+      User? user = _firebaseAuth.currentUser;
+      if (user == null) return "Sessão expirada.";
+
+      await user.updateDisplayName(nome);
+      if (fotoUrl != null) await user.updatePhotoURL(fotoUrl);
+
+      Map<String, dynamic> updateData = {'nome': nome};
+      if (curso != null) updateData['curso'] = curso;
+      if (fotoUrl != null) updateData['fotoUrl'] = fotoUrl;
+
+      await _firestore.collection('usuarios').doc(user.uid).update(updateData);
+      return null;
+    } catch (e) {
+      return "Erro ao atualizar perfil.";
+    }
+  }
+
+  // --- FAVORITOS ---
+  Future<bool> alternarSalvarEvento(String eventId) async {
+    User? user = _firebaseAuth.currentUser;
+    if (user == null) return false;
+
+    DocumentReference docRef = _firestore.collection('usuarios').doc(user.uid).collection('salvos').doc(eventId);
+    DocumentSnapshot doc = await docRef.get();
+
+    if (doc.exists) {
+      await docRef.delete();
+      return false;
+    } else {
+      await docRef.set({'salvoEm': FieldValue.serverTimestamp()});
+      return true;
+    }
+  }
+
+  Future<bool> isEventoSalvo(String eventId) async {
+    User? user = _firebaseAuth.currentUser;
+    if (user == null) return false;
+    DocumentSnapshot doc = await _firestore.collection('usuarios').doc(user.uid).collection('salvos').doc(eventId).get();
+    return doc.exists;
+  }
+
+  Stream<QuerySnapshot> getEventosSalvosStream() {
+    User? user = _firebaseAuth.currentUser;
+    if (user == null) return const Stream.empty();
+    return _firestore.collection('usuarios').doc(user.uid).collection('salvos').orderBy('salvoEm', descending: true).snapshots();
   }
 }
