@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../servicos/autenticacao_servico.dart';
-import 'home_screen.dart'; // Import necessário para o redirecionamento
+import 'home_screen.dart'; 
 
 class SignUpAdmScreen extends StatefulWidget {
   const SignUpAdmScreen({super.key});
@@ -10,12 +10,10 @@ class SignUpAdmScreen extends StatefulWidget {
 }
 
 class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
-
   final Color primaryRed = const Color(0xFF9A202F);
   final Color lightGreyBackground = const Color(0xFFF3F5F7);
   final Color textGrey = const Color(0xFF666666);
 
-  // Instância do serviço e Controllers
   final AutenticacaoServico _authService = AutenticacaoServico();
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -34,7 +32,7 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
     super.dispose();
   }
 
-  // --- LÓGICA DE CADASTRO MODIFICADA ---
+  // --- LÓGICA DE CADASTRO ADMINISTRATIVO ---
   void _validarCadastroAdm() async {
     String nome = _nomeController.text.trim();
     String email = _emailController.text.trim();
@@ -48,7 +46,7 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
 
     setState(() => _isLoading = true);
 
-    // O serviço agora usa o UID do Auth para criar o doc no Firestore
+    // Cadastra no Auth e salva papel de Admin no Firestore via token
     String? erro = await _authService.cadastrarAdm(
       nome: nome,
       email: email,
@@ -64,8 +62,7 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
     } else {
       _notificacao("Organizador cadastrado com sucesso!");
       
-      // REDIRECIONAMENTO AUTOMÁTICO: 
-      // Como o usuário já está logado após o cadastro, mandamos direto para a Home
+      // Redireciona para Home limpando a pilha de telas
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -89,71 +86,74 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              _buildBackButton(context),
-              const SizedBox(height: 30),
+        // --- CORREÇÃO: Remove efeito de esticamento visual ---
+        child: ScrollConfiguration(
+          behavior: NoOverscrollBehavior(), 
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                _buildBackButton(context),
+                const SizedBox(height: 30),
 
-              // Cabeçalho ADM
-              Center(
-                child: Column(
-                  children: [
-                    const Text(
-                      'Criar conta',
-                      style: TextStyle(
-                        fontFamily: 'Times New Roman',
-                        fontSize: 32,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
+                Center(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Criar conta',
+                        style: TextStyle(
+                          fontFamily: 'Times New Roman',
+                          fontSize: 32,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Acesso restrito a organizadores',
-                      style: TextStyle(
-                        color: primaryRed, 
-                        fontWeight: FontWeight.w600, 
-                        fontSize: 14,
-                        fontFamily: 'sans-serif'
+                      const SizedBox(height: 10),
+                      Text(
+                        'Acesso restrito a organizadores',
+                        style: TextStyle(
+                          color: primaryRed, 
+                          fontWeight: FontWeight.w600, 
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-              _buildTextField(hint: 'Nome completo do organizador', icon: Icons.person_outline, controller: _nomeController),
-              const SizedBox(height: 15),
-              _buildTextField(hint: 'email@institucional.com', icon: Icons.email_outlined, type: TextInputType.emailAddress, controller: _emailController),
-              const SizedBox(height: 15),
-              _buildPasswordField(),
-              const SizedBox(height: 15),
+                _buildTextField(hint: 'Nome completo do organizador', icon: Icons.person_outline, controller: _nomeController),
+                const SizedBox(height: 15),
+                _buildTextField(hint: 'email@institucional.com', icon: Icons.email_outlined, type: TextInputType.emailAddress, controller: _emailController),
+                const SizedBox(height: 15),
+                _buildPasswordField(),
+                const SizedBox(height: 15),
 
-              _buildTextField(
-                hint: 'Chave de Acesso SECOMP',
-                icon: Icons.vpn_key_outlined,
-                controller: _tokenController,
-              ),
-
-              const Padding(
-                padding: EdgeInsets.only(top: 8, left: 4),
-                child: Text(
-                  'Insira o código fornecido pela coordenação do ICEA.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'sans-serif'),
+                _buildTextField(
+                  hint: 'Chave de Acesso SECOMP',
+                  icon: Icons.vpn_key_outlined,
+                  controller: _tokenController,
                 ),
-              ),
 
-              const SizedBox(height: 30),
-              _buildSubmitButton(),
-              const SizedBox(height: 25),
-              _buildFooter(),
-              const SizedBox(height: 20),
-            ],
+                const Padding(
+                  padding: EdgeInsets.only(top: 8, left: 4),
+                  child: Text(
+                    'Insira o código fornecido pela coordenação do ICEA.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+                _buildSubmitButton(),
+                const SizedBox(height: 25),
+                _buildFooter(),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -234,7 +234,7 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
         child: _isLoading 
           ? const CircularProgressIndicator(color: Colors.white)
           : const Text(
-              'Cadastrar',
+              'CADASTRAR',
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
       ),
@@ -245,12 +245,17 @@ class _SignUpAdmScreenState extends State<SignUpAdmScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Já é um organizador? ', style: TextStyle(color: textGrey, fontSize: 16, fontFamily: 'sans-serif')),
+        Text('Já é um organizador? ', style: TextStyle(color: textGrey, fontSize: 16)),
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: Text('Faça login', style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'sans-serif')),
+          child: Text('Faça login', style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 16)),
         ),
       ],
     );
   }
+}
+
+class NoOverscrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
 }
