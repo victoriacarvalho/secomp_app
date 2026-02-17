@@ -1,314 +1,254 @@
 import 'package:flutter/material.dart';
-import 'certificate_detail_screen.dart';
-import 'diary_screen.dart'; // Importante para navegar para a agenda
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'home_screen.dart'; 
 
-class CertificatesScreen extends StatelessWidget {
+class CertificatesScreen extends StatefulWidget {
   const CertificatesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Dados simulados
-    final List<Map<String, dynamic>> chats = [
-      {
-        'name': 'José da Silva',
-        'message': 'Olá, seu certificado Avanço da IA foi emitido',
-        'time': '09:46',
-        'avatar': 'https://i.pravatar.cc/150?u=1',
-        'statusColor': Colors.amber,
-        'isRead': true,
-        'checkColor': Colors.grey,
-      },
-      {
-        'name': 'Ana Maria',
-        'message': 'Emitindo...',
-        'time': '08:42',
-        'avatar': 'https://i.pravatar.cc/150?u=2',
-        'statusColor': Colors.grey,
-        'isRead': true,
-        'checkColor': Colors.green,
-        'isHighlight': true,
-      },
-      {
-        'name': 'Igor M.',
-        'message': 'Olá, seu certificado Instalação DEBIAN foi emitido',
-        'time': 'Yesterday',
-        'avatar': 'https://i.pravatar.cc/150?u=3',
-        'statusColor': Colors.green,
-        'isRead': true,
-        'checkColor': Colors.grey,
-      },
-      {
-        'name': 'Helen',
-        'message': 'Olá, seu certificado Análise de dados foi emitido',
-        'time': '07:56',
-        'avatar': 'https://i.pravatar.cc/150?u=4',
-        'statusColor': Colors.red,
-        'isRead': true,
-        'checkColor': Colors.grey,
-      },
-      {
-        'name': 'Carlos',
-        'message': 'Olá, seu certificado Machine L. foi emitido',
-        'time': '05:52',
-        'avatar': 'https://i.pravatar.cc/150?u=5',
-        'statusColor': Colors.green,
-        'isRead': true,
-        'checkColor': Colors.green,
-      },
-    ];
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Certificados",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-            child: Text(
-              "Meus certificados",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  icon: Icon(Icons.search, color: Colors.grey),
-                  hintText: "Busque por nome do evento",
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          Expanded(
-            child: ListView.separated(
-              itemCount: chats.length,
-              separatorBuilder: (context, index) => const Divider(height: 1, indent: 80, endIndent: 20),
-              itemBuilder: (context, index) {
-                return _buildChatTile(context, chats[index]);
-              },
-            ),
-          ),
-        ],
-      ),
-      // AQUI ESTAVA O ERRO: Agora a classe existe logo abaixo
-      bottomNavigationBar: const CustomBottomBar(),
-    );
-  }
-
-  Widget _buildChatTile(BuildContext context, Map<String, dynamic> chat) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatDetailScreen(
-              name: chat['name'],
-              avatarUrl: chat['avatar'],
-            ),
-          ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
-        child: Row(
-          children: [
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundImage: NetworkImage(chat['avatar']),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: chat['statusColor'],
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
-                )
-              ],
-            ),
-            const SizedBox(width: 15),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        chat['name'],
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      Row(
-                        children: [
-                          if (chat['isRead'])
-                            Icon(Icons.done_all, size: 16, color: chat['checkColor']),
-                          const SizedBox(width: 5),
-                          Text(
-                            chat['time'],
-                            style: const TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      )
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    chat['message'],
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: (chat['isHighlight'] ?? false) ? Colors.blue : Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<CertificatesScreen> createState() => _CertificatesScreenState();
 }
 
-// --- CLASSE DA BARRA INFERIOR (Copiada aqui para funcionar o import) ---
+class _CertificatesScreenState extends State<CertificatesScreen> {
+  final Color primaryColor = const Color(0xFFA93244);
+  bool _isOrganizador = false;
+  String _userId = "";
 
-class CustomBottomBar extends StatelessWidget {
-  const CustomBottomBar({super.key});
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole();
+  }
+
+  // Verifica se o usuário logado é organizador (email @ufop.edu.br)
+  void _checkUserRole() {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        _userId = user.uid;
+        if (user.email != null && user.email!.endsWith("@ufop.edu.br")) {
+          _isOrganizador = true;
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5)
-          )
-        ],
+    return Scaffold(
+      backgroundColor: Colors.white,
+      
+      // Barra de navegação inferior padronizada
+      bottomNavigationBar: const CustomBottomBar(activeIndex: 2),
+
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          "Certificados",
+          style: TextStyle(
+            fontFamily: 'Times New Roman',
+            fontWeight: FontWeight.w500,
+            fontSize: 24,
+            color: Colors.black87,
+          ),
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+
+      // Exibe view diferente dependendo do papel do usuário
+      body: _isOrganizador ? _buildOrganizerView() : _buildParticipantView(),
+    );
+  }
+
+  // Tela do Participante
+  Widget _buildParticipantView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Botão INÍCIO (Volta para Home)
-          _buildNavItem(
-              Icons.home_outlined,
-              "Início",
-              false,
-              onTap: () {
-                // Volta até a primeira tela (Home)
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
-          ),
-
-          // Botão AGENDA (Vai para Agenda)
-          _buildNavItem(
-              Icons.calendar_month,
-              "Agenda",
-              false,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AgendaScreen()),
-                );
-              }
-          ),
-
-          // Botão BUSCA
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFA93244),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: Color(0x40A93244), blurRadius: 10, offset: Offset(0, 5))
-              ],
-            ),
-            child: const Icon(Icons.search, color: Colors.white, size: 30),
-          ),
-
-          // Botão CERTIFICADOS (Ativo)
-          _buildNavItem(
-            Icons.chat_bubble_outline,
-            "Certificados",
-            true, // Ativo
-          ),
-
-          // Botão PERFIL
-          _buildNavItem(
-            Icons.person_outline,
-            "Perfil",
-            false,
+          Icon(Icons.school_outlined, size: 60, color: Colors.grey[300]),
+          const SizedBox(height: 20),
+          const Text(
+            "Seus certificados aparecerão aqui.",
+            style: TextStyle(color: Colors.grey),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        color: Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: isActive ? const Color(0xFFA93244) : Colors.grey, size: 26),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                  color: isActive ? const Color(0xFFA93244) : Colors.grey,
-                  fontSize: 10,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal
+
+  // Tela do Organizador
+  Widget _buildOrganizerView() {
+    // Escuta eventos criados pelo usuário atual
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('eventos')
+          .where('organizadorUid', isEqualTo: _userId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.event_note, size: 60, color: Colors.grey[300]),
+                const SizedBox(height: 20),
+                const Text("Você ainda não criou eventos.", style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        var docs = snapshot.data!.docs;
+
+        // Remove efeito de esticamento
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+          child: ListView.builder(
+            physics: const ClampingScrollPhysics(), // Trava a física do scroll
+            padding: const EdgeInsets.all(20),
+            itemCount: docs.length + 1, // +1 para o cabeçalho
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                // Cabeçalho da lista
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Gerenciar Emissão",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      "Libere os certificados apenas para quem realizou o check-in.",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              }
+
+              // Cards dos eventos
+              var doc = docs[index - 1];
+              var dados = doc.data() as Map<String, dynamic>;
+              String eventId = doc.id;
+              
+              // Por enquanto, sempre pendente (lógica de envio futura)
+              bool isEmitido = false; 
+
+              return _buildAdminCard(
+                eventId: eventId,
+                titulo: dados['titulo'] ?? "Evento sem título",
+                isEmitido: isEmitido,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAdminCard({
+    required String eventId,
+    required String titulo,
+    required bool isEmitido,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Título e Status
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isEmitido ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8)
+                ),
+                child: Text(
+                  isEmitido ? "Emitido" : "Pendente",
+                  style: TextStyle(
+                    color: isEmitido ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12
+                  ),
+                ),
+              )
+            ],
+          ),
+          
+          const SizedBox(height: 10),
+          
+          // Apenas participantes com PRESENÇA CONFIRMADA
+          FutureBuilder<AggregateQuerySnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('inscricoes')
+                .where('eventId', isEqualTo: eventId)
+                .where('presencaConfirmada', isEqualTo: true) 
+                .count()
+                .get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Text("Calculando...", style: TextStyle(color: Colors.grey, fontSize: 12));
+              }
+              int total = snapshot.data?.count ?? 0;
+              return Text(
+                "$total participantes presentes", 
+                style: TextStyle(color: Colors.grey[600])
+              );
+            },
+          ),
+
+          const SizedBox(height: 15),
+          
+          // Botão de Ação (Apenas visual por enquanto)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   const SnackBar(
+                     content: Text("A lógica de envio será implementada posteriormente."),
+                     backgroundColor: Colors.grey,
+                     duration: Duration(seconds: 2),
+                   )
+                );
+              },
+              icon: const Icon(Icons.send, size: 18, color: Colors.white,),
+              label: const Text(
+                "EMITIR CERTIFICADOS", 
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                elevation: 0,
               ),
             ),
-          ],
-        ),
+          )
+        ],
       ),
     );
   }
