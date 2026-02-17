@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../servicos/autenticacao_servico.dart'; // Importe seu serviço
+import '../servicos/autenticacao_servico.dart'; 
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -10,10 +10,9 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final AutenticacaoServico _authService = AutenticacaoServico(); // Instância do serviço
-  bool _isLoading = false; // Estado de carregamento
+  final AutenticacaoServico _authService = AutenticacaoServico();
+  bool _isLoading = false; 
 
-  // Cores do projeto
   final Color primaryRed = const Color(0xFF9A202F);
   final Color lightGreyBackground = const Color(0xFFF3F5F7);
   final Color textGrey = const Color(0xFF666666);
@@ -24,7 +23,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  // --- LÓGICA DE RECUPERAÇÃO ---
+  // Envia e-mail de recuperação via Firebase
   void _processarRecuperacao() async {
     String email = _emailController.text.trim();
 
@@ -34,7 +33,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
 
     setState(() => _isLoading = true);
-
     String? erro = await _authService.recuperarSenha(email: email);
 
     if (!mounted) return;
@@ -43,7 +41,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (erro != null) {
       _notificacao(erro, erro: true);
     } else {
-      // Se deu certo, mostra o seu pop-up de sucesso!
       _showSuccessDialog();
     }
   }
@@ -58,15 +55,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // --- SEU POP-UP ---
+  // Pop-up informativo de sucesso
   void _showSuccessDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // Força o usuário a interagir com o botão se quiser voltar
+      barrierDismissible: false, 
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -90,16 +88,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   style: TextStyle(fontSize: 14, color: textGrey, height: 1.5),
                 ),
                 const SizedBox(height: 24),
-                // Adicionei um botão para fechar e voltar para o login
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: primaryRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed, 
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
                     onPressed: () {
-                      Navigator.pop(context); // Fecha o dialog
-                      Navigator.pop(context); // Volta para a tela de Login
+                      Navigator.pop(context); // Fecha dialog
+                      Navigator.pop(context); // Volta para Login
                     },
-                    child: const Text("Voltar para Login", style: TextStyle(color: Colors.white)),
+                    child: const Text("Voltar para Login", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 )
               ],
@@ -115,28 +116,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView( // Adicionado para evitar erro de overflow com teclado
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              // Botão Voltar
-              _buildBackButton(),
-              const SizedBox(height: 40),
-              _buildHeader(),
-              const SizedBox(height: 40),
-              _buildEmailField(),
-              const SizedBox(height: 30),
-              _buildSubmitButton(),
-            ],
+        // --- CORREÇÃO: Remove efeito de esticamento visual ---
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                _buildBackButton(),
+                const SizedBox(height: 40),
+                _buildHeader(),
+                const SizedBox(height: 40),
+                _buildEmailField(),
+                const SizedBox(height: 30),
+                _buildSubmitButton(),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // --- Widgets Auxiliares para limpar o Build ---
   Widget _buildBackButton() {
     return InkWell(
       onTap: () => Navigator.pop(context),
@@ -197,10 +201,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         onPressed: _isLoading ? null : _processarRecuperacao,
         child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
+            ? const SizedBox(
+                height: 20, width: 20,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              )
             : const Text(
-                'Confirmar',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                'CONFIRMAR',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
               ),
       ),
     );
