@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../servicos/autenticacao_servico.dart';
-import 'home_screen.dart';
+import 'home_screen.dart'; // Importante para o NoOverscrollBehavior
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,15 +15,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final Color textGrey = const Color(0xFF666666);
 
   final AutenticacaoServico _authService = AutenticacaoServico();
+  
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _matriculaController = TextEditingController(); 
   final TextEditingController _senhaController = TextEditingController();
 
   String? _cursoSelecionado;
   final List<String> _cursos = [
     "Sistemas de Informação",
     "Engenharia da Computação",
-    "Engenharia de Produção"
+    "Engenharia de Produção",
     "Engenharia Elétrica"
   ];
 
@@ -34,17 +36,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void dispose() {
     _nomeController.dispose();
     _emailController.dispose();
+    _matriculaController.dispose();
     _senhaController.dispose();
     super.dispose();
   }
 
+  // Validação e envio dos dados para o Firebase
   void _validarCadastro() async {
     String nome = _nomeController.text.trim();
     String email = _emailController.text.trim();
+    String matricula = _matriculaController.text.trim();
     String senha = _senhaController.text;
 
-    if (nome.isEmpty || email.isEmpty || senha.isEmpty || _cursoSelecionado == null) {
-      _notificacao("Por favor, preencha todos os campos e selecione seu curso.", erro: true);
+    if (nome.isEmpty || email.isEmpty || matricula.isEmpty || senha.isEmpty || _cursoSelecionado == null) {
+      _notificacao("Por favor, preencha todos os campos.", erro: true);
       return;
     }
     
@@ -54,7 +59,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     if (senha.length < 8 || !senha.contains(RegExp(r'[A-Z]')) || !senha.contains(RegExp(r'[0-9]'))) {
-      _notificacao("Senha inválida: 8 caracteres, uma letra maiúscula e um número.", erro: true);
+      _notificacao("Senha deve ter 8 caracteres, uma maiúscula e um número.", erro: true);
       return;
     }
 
@@ -63,6 +68,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     String? resultado = await _authService.cadastrarUsuario(
       nome: nome, 
       email: email, 
+      matricula: matricula,
       senha: senha,
       curso: _cursoSelecionado!, 
     );
@@ -93,92 +99,76 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              _buildBackButton(context),
-              const SizedBox(height: 30),
-              Center(
-                child: Column(
-                  children: [
-                    const Text(
-                      'Criar conta',
-                      style: TextStyle(
-                        fontFamily: 'Times New Roman', 
-                        fontSize: 32, 
-                        fontWeight: FontWeight.w500, 
-                        color: Colors.black87
+        // --- CORREÇÃO: Remove efeito visual de esticamento ---
+        child: ScrollConfiguration(
+          behavior: NoOverscrollBehavior(),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(), // Trava física do scroll
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                _buildBackButton(context),
+                const SizedBox(height: 30),
+                Center(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Criar conta',
+                        style: TextStyle(fontFamily: 'Times New Roman', fontSize: 32, fontWeight: FontWeight.w500, color: Colors.black87),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Subtítulo padronizado com a tela ADM
-                    Text(
-                      'Crie uma conta para participar', 
-                      style: TextStyle(
-                        color: primaryRed, 
-                        fontSize: 14, 
-                        fontWeight: FontWeight.w600, 
-                        fontFamily: 'sans-serif'
-                      )
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
-              
-              _buildTextField(hint: 'Nome Completo', icon: Icons.person_outline, controller: _nomeController),
-              const SizedBox(height: 15),
-              
-              _buildTextField(hint: 'exemplo@aluno.ufop.edu.br', icon: Icons.email_outlined, type: TextInputType.emailAddress, controller: _emailController),
-              const SizedBox(height: 15),
-
-              // Campo de Seleção de Curso com altura e alinhamento corrigidos
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: lightGreyBackground,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _cursoSelecionado,
-                    hint: const Row(
-                      children: [
-                        Icon(Icons.school_outlined, color: Colors.grey),
-                        SizedBox(width: 10),
-                        Text("Selecione seu curso", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                      ],
-                    ),
-                    isExpanded: true,
-                    icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                    // Ajuste de altura para alinhar com TextFields
-                    itemHeight: 60,
-                    items: _cursos.map((String curso) {
-                      return DropdownMenuItem<String>(
-                        value: curso,
-                        child: Text(curso, style: const TextStyle(fontSize: 15)),
-                      );
-                    }).toList(),
-                    onChanged: (String? novoValor) {
-                      setState(() => _cursoSelecionado = novoValor);
-                    },
+                      const SizedBox(height: 10),
+                      Text(
+                        'Crie uma conta para participar', 
+                        style: TextStyle(color: primaryRed, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 40),
+                
+                _buildTextField(hint: 'Nome Completo', icon: Icons.person_outline, controller: _nomeController),
+                const SizedBox(height: 15),
+                _buildTextField(hint: 'exemplo@aluno.ufop.edu.br', icon: Icons.email_outlined, type: TextInputType.emailAddress, controller: _emailController),
+                const SizedBox(height: 15),
+                _buildTextField(hint: 'Matrícula', icon: Icons.badge_outlined, type: TextInputType.number, controller: _matriculaController),
+                const SizedBox(height: 15),
 
-              const SizedBox(height: 15),
-              _buildPasswordField(),
-              const SizedBox(height: 40),
-              
-              _buildSubmitButton('Cadastrar'),
-              const SizedBox(height: 25),
-              _buildFooter(),
-              const SizedBox(height: 20),
-            ],
+                // Dropdown de Curso
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: lightGreyBackground, borderRadius: BorderRadius.circular(12)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _cursoSelecionado,
+                      hint: const Row(
+                        children: [
+                          Icon(Icons.school_outlined, color: Colors.grey),
+                          SizedBox(width: 10),
+                          Text("Selecione seu curso", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                        ],
+                      ),
+                      isExpanded: true,
+                      items: _cursos.map((String curso) {
+                        return DropdownMenuItem<String>(value: curso, child: Text(curso, style: const TextStyle(fontSize: 15)));
+                      }).toList(),
+                      onChanged: (val) => setState(() => _cursoSelecionado = val),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+                _buildPasswordField(),
+                const SizedBox(height: 40),
+                
+                _buildSubmitButton('CADASTRAR'),
+                const SizedBox(height: 25),
+                _buildFooter(),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -233,11 +223,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     width: double.infinity, 
     height: 55,
     child: ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryRed, 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), 
-        elevation: 0
-      ),
+      style: ElevatedButton.styleFrom(backgroundColor: primaryRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), elevation: 0),
       onPressed: _isLoading ? null : _validarCadastro,
       child: _isLoading 
           ? const CircularProgressIndicator(color: Colors.white) 
@@ -248,10 +234,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget _buildFooter() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      Text("Já tem uma conta? ", style: TextStyle(color: textGrey, fontSize: 16, fontFamily: 'sans-serif')),
+      Text("Já tem uma conta? ", style: TextStyle(color: textGrey, fontSize: 16)),
       GestureDetector(
         onTap: () => Navigator.pop(context), 
-        child: Text("Faça login", style: TextStyle(color: primaryRed, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))
+        child: Text("Faça login", style: TextStyle(color: primaryRed, fontSize: 16, fontWeight: FontWeight.bold))
       ),
     ],
   );
