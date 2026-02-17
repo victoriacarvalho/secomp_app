@@ -2,20 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'firebase_options.dart'; 
 
-// Importe suas telas
+// Telas principais
 import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-// Se você tiver uma tela de Onboarding, importe ela também:
-// import 'screens/onboarding_screen.dart';
+import 'screens/onboarding_screen.dart'; 
 
 void main() async {
+  // Garante que os bindings do Flutter estejam prontos antes da inicialização
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa o Firebase
-  await Firebase.initializeApp();
+  // 1. Inicializa o Firebase com as configurações geradas pelo CLI
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  // Inicializa a formatação de datas para Português
+  // 2. Inicializa a formatação de datas para o padrão brasileiro
   await initializeDateFormatting('pt_BR', null);
 
   runApp(const MyApp());
@@ -30,29 +32,33 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Secomp App',
       theme: ThemeData(
-        // Configuração de cores do seu projeto
         primaryColor: const Color(0xFF9A202F),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF9A202F)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF9A202F),
+          primary: const Color(0xFF9A202F),
+        ),
         useMaterial3: true,
+        // Define fontes padrão se necessário (ex: sans-serif)
+        fontFamily: 'sans-serif',
       ),
-      // EM VEZ DE CHAMAR A LOGIN SCREEN DIRETO, CHAMAMOS O "PORTEIRO"
+      // O AuthWrapper decide qual será a primeira tela exibida
       home: const AuthWrapper(),
     );
   }
 }
 
-// --- O "PORTEIRO" (AUTH WRAPPER) ---
+// --- AUTH WRAPPER (PORTEIRO) ---
+// Escuta em tempo real se o usuário está logado ou não
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // StreamBuilder fica "ouvindo" o Firebase Auth em tempo real
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-
-        // 1. Enquanto verifica (Carregando...)
+        
+        // Exibe indicador de carregamento enquanto verifica a sessão
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
@@ -61,20 +67,13 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // 2. Se tem erro na conexão
-        if (snapshot.hasError) {
-          return const Scaffold(
-            body: Center(child: Text("Erro ao conectar no Firebase.")),
-          );
-        }
-
-        // 3. SE TEM DADOS (USUÁRIO ESTÁ LOGADO) -> VAI PARA HOME
+        // Caso exista um usuário na sessão do Firebase -> Vai para Home
         if (snapshot.hasData) {
           return const HomeScreen();
         }
 
-        // 4. SE NÃO TEM DADOS (DESLOGADO) -> VAI PARA LOGIN (OU ONBOARDING)
-        return const LoginScreen();
+        // Caso contrário -> Vai para a tela de introdução (Onboarding)
+        return const OnboardingScreen();
       },
     );
   }
