@@ -13,16 +13,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Instância do serviço e Controllers
   final AutenticacaoServico _authService = AutenticacaoServico();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
 
-  // Estados da tela
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  // Cores do projeto
   final Color primaryRed = const Color(0xFF9A202F);
   final Color lightGreyInput = const Color(0xFFF3F3F3);
 
@@ -44,8 +41,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-
-    // Chama o serviço para verificar no Firebase
     String? erro = await _authService.logarUsuario(email: email, senha: senha);
 
     if (!mounted) return;
@@ -54,7 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (erro != null) {
       _notificacao(erro, erro: true);
     } else {
-      // Se não houver erro, entra no app e limpa a pilha de navegação
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -76,18 +70,24 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showSignUpOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white, 
+      elevation: 0, 
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(24.0),
+          decoration: const BoxDecoration(
+             color: Colors.white, 
+             borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(10),
@@ -98,8 +98,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 "Como deseja se cadastrar?",
                 style: TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   fontFamily: 'Times New Roman',
+                  color: Colors.black87, 
                 ),
               ),
               const SizedBox(height: 25),
@@ -129,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Icon(Icons.admin_panel_settings_outlined, color: primaryRed),
                 ),
-                title: const Text("Organizador (ADM)", style: TextStyle(fontWeight: FontWeight.bold)),
+                title: const Text("Organizador", style: TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: const Text("Acesso restrito à equipe SECOMP"),
                 onTap: () {
                   Navigator.pop(context);
@@ -149,104 +150,104 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Botão de Voltar
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black54),
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              const Center(
-                child: Text(
-                  'Faça login',
-                  style: TextStyle(
-                    fontFamily: 'Times New Roman',
-                    fontSize: 32,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+        // --- CORREÇÃO DEFINITIVA DO ESTICAMENTO ---
+        child: ScrollConfiguration(
+          behavior: NoOverscrollBehavior(), 
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(), 
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black54),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 50),
+                const SizedBox(height: 40),
 
-              // Campo de Email
-              _buildTextField(
-                hintText: 'exemplo@aluno.ufop.edu.br',
-                icon: Icons.email_outlined,
-                controller: _emailController,
-              ),
-
-              const SizedBox(height: 20),
-
-              // Campo de Senha
-              _buildPasswordField(),
-
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()));
-                  },
+                const Center(
                   child: Text(
-                    'Esqueceu sua senha?',
-                    style: TextStyle(color: primaryRed, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Botão Login com indicador de progresso
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryRed,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  ),
-                  onPressed: _isLoading ? null : _realizarLogin,
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Login',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // Rodapé: Criar conta
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Não tem uma conta? ", style: TextStyle(color: Colors.grey, fontSize: 16)),
-                  GestureDetector(
-                    onTap: () => _showSignUpOptions(context),
-                    child: Text(
-                      "Criar conta",
-                      style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 16),
+                    'Faça login',
+                    style: TextStyle(
+                      fontFamily: 'Times New Roman',
+                      fontSize: 32,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
+                ),
+
+                const SizedBox(height: 50),
+
+                _buildTextField(
+                  hintText: 'exemplo@aluno.ufop.edu.br',
+                  icon: Icons.email_outlined,
+                  controller: _emailController,
+                ),
+
+                const SizedBox(height: 20),
+
+                _buildPasswordField(),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()));
+                    },
+                    child: Text(
+                      'Esqueceu sua senha?',
+                      style: TextStyle(color: primaryRed, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    onPressed: _isLoading ? null : _realizarLogin,
+                    child: _isLoading 
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'LOGIN',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Não tem uma conta? ", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                    GestureDetector(
+                      onTap: () => _showSignUpOptions(context),
+                      child: Text(
+                        "Criar conta",
+                        style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -296,4 +297,10 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+// Classe auxiliar para remover o efeito visual do scroll
+class NoOverscrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
 }
