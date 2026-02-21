@@ -314,7 +314,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: isActive ? primaryColor : Colors.black.withOpacity(0.3), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          // Substituído .withOpacity(0.3) por .withValues(alpha: 0.3)
+          color: isActive ? primaryColor : Colors.black.withValues(alpha: 0.3),
+          shape: BoxShape.circle,
+        ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
