@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart'; 
+import 'package:url_launcher/url_launcher.dart';
 import '../servicos/autenticacao_servico.dart';
 import 'subscription_screen.dart';
 import 'edit_event_screen.dart';
-import 'home_screen.dart'; 
+import 'home_screen.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Map<String, dynamic> eventData;
@@ -19,6 +19,7 @@ class EventDetailScreen extends StatefulWidget {
 class _EventDetailScreenState extends State<EventDetailScreen> {
   final AutenticacaoServico _authService = AutenticacaoServico();
   final Color primaryColor = const Color(0xFFA93244);
+  bool _isLoading = false;
 
   late int _vagasAtuais;
   bool _isInscrito = false;
@@ -67,7 +68,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
-  // Abre link externo do evento online
   Future<void> _abrirLink(String? url) async {
     if (url == null || url.isEmpty) return;
     String urlFinal = url.startsWith('http') ? url : 'https://$url';
@@ -79,8 +79,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  // Função para inscrição
   void _irParaInscricao() async {
     if (_vagasAtuais <= 0) return;
+
+    setState(() => _isLoading = true);
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -91,21 +95,28 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
     );
 
-    if (result == true) {
-      setState(() {
-        _vagasAtuais--;
-        _isInscrito = true;
-        widget.eventData['vagas'] = _vagasAtuais;
-      });
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (result == true) {
+        setState(() {
+          _vagasAtuais--;
+          _isInscrito = true;
+          widget.eventData['vagas'] = _vagasAtuais;
+        });
+      }
     }
   }
 
+  // Função para edição
   void _editarEvento() async {
     final atualizou = await Navigator.push(
         context,
         MaterialPageRoute(builder: (ctx) => EditEventScreen(eventData: widget.eventData))
     );
-    if (atualizou == true && mounted) Navigator.pop(context);
+    if (atualizou == true && mounted) {
+      // Se editou, podemos fechar ou recarregar
+      Navigator.pop(context, true);
+    }
   }
 
   void _showFullDescription(BuildContext context, String description) {
@@ -162,14 +173,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Imagem de Capa
           Positioned(
             top: 0, left: 0, right: 0,
             height: MediaQuery.of(context).size.height * 0.5,
             child: EventImage(imageUrl: imageUrl, fit: BoxFit.cover),
           ),
-
-          // 2. Barra de Ações (Voltar e Salvar)
           Positioned(
             top: 50, left: 20, right: 20,
             child: Row(
@@ -181,126 +189,117 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ],
             ),
           ),
-
-          // 3. Conteúdo Dinâmico
           Positioned.fill(
             top: MediaQuery.of(context).size.height * 0.42,
             child: Container(
               decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(35))),
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(child: Container(width: 40, height: 4, color: Colors.grey[300])),
-                      const SizedBox(height: 25),
-
-                      // Título e Ícone do Palestrante
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(widget.eventData['titulo'] ?? "Sem título", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, height: 1.1)),
-                                const SizedBox(height: 5),
-                                Text(todosPalestrantes, style: TextStyle(color: Colors.grey[500], fontSize: 16), maxLines: 2, overflow: TextOverflow.ellipsis),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            width: 50, height: 50,
-                            decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
-                            alignment: Alignment.center,
-                            child: Text(palestrantePrincipal.isNotEmpty ? palestrantePrincipal[0].toUpperCase() : "U", style: TextStyle(color: primaryColor, fontSize: 24, fontWeight: FontWeight.bold)),
-                          )
-                        ],
-                      ),
-
-                      const SizedBox(height: 25),
-
-                      // Info de Local e Vagas
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
-                          const SizedBox(width: 5),
-                          Expanded(child: Text(widget.eventData['isOnline'] == true ? "Online" : (widget.eventData['local'] ?? "Local"), style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis)),
-                          const SizedBox(width: 10),
-                          Text("$_vagasAtuais vagas", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(width: 15),
-                          Text("Grátis", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
-                        ],
-                      ),
-
-                      const SizedBox(height: 30),
-
-                      // Descrição Curta com "Leia mais"
-                      const Text("Sobre", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 10),
-                      RichText(
-                        text: TextSpan(
-                          style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.6),
-                          children: [
-                            TextSpan(text: descricao.length > 120 ? "${descricao.substring(0, 120)}... " : descricao),
-                            if (descricao.length > 120)
-                              TextSpan(
-                                text: " Leia mais",
-                                style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold),
-                                recognizer: TapGestureRecognizer()..onTap = () => _showFullDescription(context, descricao),
-                              ),
-                          ],
-                        ),
-                      ),
-
-                      // Link para eventos Online
-                      if (widget.eventData['isOnline'] == true && widget.eventData['link']?.toString().isNotEmpty == true) ...[
-                        const SizedBox(height: 20),
-                        GestureDetector(
-                          onTap: () => _abrirLink(widget.eventData['link']),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue[200]!)),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.link, color: Colors.blue),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(widget.eventData['link'], style: const TextStyle(color: Colors.blue), overflow: TextOverflow.ellipsis)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 40),
-
-                      // Botão de Ação (Inscrever ou Editar)
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: _isCriador ? _editarEvento : (_isInscrito || _vagasAtuais <= 0) ? null : _irParaInscricao,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            disabledBackgroundColor: Colors.grey[300],
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                            elevation: 0,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(child: Container(width: 40, height: 4, color: Colors.grey[300])),
+                    const SizedBox(height: 25),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(_isCriador ? Icons.edit : (_isInscrito ? Icons.check : Icons.person_add), color: Colors.white),
+                              Text(widget.eventData['titulo'] ?? "Sem título", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, height: 1.1)),
+                              const SizedBox(height: 5),
+                              Text(todosPalestrantes, style: TextStyle(color: Colors.grey[500], fontSize: 16), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 50, height: 50,
+                          decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+                          alignment: Alignment.center,
+                          child: Text(palestrantePrincipal.isNotEmpty ? palestrantePrincipal[0].toUpperCase() : "U", style: TextStyle(color: primaryColor, fontSize: 24, fontWeight: FontWeight.bold)),
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 25),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+                        const SizedBox(width: 5),
+                        Expanded(child: Text(widget.eventData['isOnline'] == true ? "Online" : (widget.eventData['local'] ?? "Local"), style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                        const SizedBox(width: 10),
+                        Text("$_vagasAtuais vagas", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(width: 15),
+                        Text("Grátis", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                    const Text("Sobre", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    RichText(
+                      text: TextSpan(
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.6),
+                        children: [
+                          TextSpan(text: descricao.length > 120 ? "${descricao.substring(0, 120)}... " : descricao),
+                          if (descricao.length > 120)
+                            TextSpan(
+                              text: " Leia mais",
+                              style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold),
+                              recognizer: TapGestureRecognizer()..onTap = () => _showFullDescription(context, descricao),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (widget.eventData['isOnline'] == true && widget.eventData['link']?.toString().isNotEmpty == true) ...[
+                      const SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () => _abrirLink(widget.eventData['link']),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue[200]!)),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.link, color: Colors.blue),
                               const SizedBox(width: 10),
-                              Text(_isCriador ? "EDITAR EVENTO" : (_isInscrito ? "INSCRITO" : (_vagasAtuais <= 0 ? "LOTADO" : "INSCREVER-SE")), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                              Expanded(child: Text(widget.eventData['link'], style: const TextStyle(color: Colors.blue), overflow: TextOverflow.ellipsis)),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
                     ],
-                  ),
+                    const SizedBox(height: 40),
+
+                    // LÓGICA CORRIGIDA DO BOTÃO ABAIXO:
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : (_isCriador
+                            ? _editarEvento
+                            : (_vagasAtuais <= 0 || _isInscrito ? null : _irParaInscricao)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isCriador ? Colors.blue : (_isInscrito ? Colors.green : (_vagasAtuais <= 0 ? Colors.grey : primaryColor)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          elevation: 0,
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(_isCriador ? Icons.edit : (_isInscrito ? Icons.check : Icons.person_add), color: Colors.white),
+                            const SizedBox(width: 10),
+                            Text(
+                                _isCriador ? "EDITAR EVENTO" : (_isInscrito ? "INSCRITO" : (_vagasAtuais <= 0 ? "LOTADO" : "INSCREVER-SE")),
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
             ),
