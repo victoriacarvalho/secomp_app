@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.2.3
+  pdf: ^3.10.7
+  printing: ^5.11.1
   
   # Firebase
   firebase_core: ^4.4.0
