@@ -214,9 +214,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         ),
                         Container(
                           width: 50, height: 50,
-                          decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+                          decoration: BoxDecoration(
+                            // Alterado de .withOpacity(0.1) para .withValues(alpha: 0.1)
+                            color: primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                           alignment: Alignment.center,
-                          child: Text(palestrantePrincipal.isNotEmpty ? palestrantePrincipal[0].toUpperCase() : "U", style: TextStyle(color: primaryColor, fontSize: 24, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            palestrantePrincipal.isNotEmpty ? palestrantePrincipal[0].toUpperCase() : "U",
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         )
                       ],
                     ),
