@@ -8,6 +8,7 @@ import 'diary_screen.dart';
 import 'profile_screen.dart';
 import 'certificates_screen.dart';
 import 'all_events_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -246,10 +247,21 @@ class CustomBottomBar extends StatelessWidget {
         children: [
           _buildNavItem(context, Icons.home, "Início", 0),
           _buildNavItem(context, Icons.calendar_month, "Agenda", 1),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(color: Color(0xFFA93244), shape: BoxShape.circle),
-            child: const Icon(Icons.search, color: Colors.white, size: 28),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFA93244), 
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.search, color: Colors.white, size: 28),
+            ),
           ),
           _buildNavItem(context, Icons.chat_bubble_outline, "Certificados", 2),
           _buildNavItem(context, Icons.person_outline, "Perfil", 3),
