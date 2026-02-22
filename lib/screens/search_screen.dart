@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../servicos/autenticacao_servico.dart';
 import 'event_detail_screen.dart';
-import 'home_screen.dart'; // Para usar o EventImage
+import '../widgets/event_image.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});

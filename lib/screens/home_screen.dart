@@ -10,6 +10,7 @@ import 'certificates_screen.dart';
 import 'all_events_screen.dart';
 import 'search_screen.dart';
 import '../servicos/notificacao_servico.dart';
+import '../widgets/event_image.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -287,28 +288,5 @@ class CustomBottomBar extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class EventImage extends StatelessWidget {
-  final String? imageUrl;
-  final double? height;
-  final double? width;
-  final BoxFit fit;
-  static const String _defaultAsset = "assets/images/icea.png";
-
-  const EventImage({super.key, required this.imageUrl, this.height, this.width, this.fit = BoxFit.cover});
-
-  @override
-  Widget build(BuildContext context) {
-    if (imageUrl == null || imageUrl!.isEmpty) return Image.asset(_defaultAsset, height: height, width: width, fit: fit);
-    if (imageUrl!.startsWith('http')) {
-      return Image.network(
-        imageUrl!, height: height, width: width, fit: fit,
-        loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator(color: Color(0xFF9A202F))),
-        errorBuilder: (context, error, stack) => Image.asset(_defaultAsset, height: height, width: width, fit: fit),
-      );
-    }
-    return Image.asset(imageUrl!, height: height, width: width, fit: fit, errorBuilder: (c, e, s) => Image.asset(_defaultAsset));
   }
 }

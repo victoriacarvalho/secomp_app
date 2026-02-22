@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../servicos/autenticacao_servico.dart';
 import 'event_detail_screen.dart';
-import 'home_screen.dart'; 
+import '../widgets/event_image.dart'; 
 
 class AllEventsScreen extends StatefulWidget {
   const AllEventsScreen({super.key});
