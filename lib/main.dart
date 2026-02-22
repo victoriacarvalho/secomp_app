@@ -7,17 +7,22 @@ import 'firebase_options.dart';
 // Telas principais
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart'; 
+// Import do Serviço de Notificações
+import 'servicos/notificacao_servico.dart';
 
 void main() async {
   // Garante que os bindings do Flutter estejam prontos antes da inicialização
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Inicializa o Firebase com as configurações geradas pelo CLI
+  // 1. Inicializa o Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 2. Inicializa a formatação de datas para o padrão brasileiro
+  // 2. Inicializa o serviço de notificações locais agendadas
+  await NotificacaoServico.init();
+
+  // 3. Inicializa a formatação de datas para o padrão brasileiro
   await initializeDateFormatting('pt_BR', null);
 
   runApp(const MyApp());
@@ -38,17 +43,13 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF9A202F),
         ),
         useMaterial3: true,
-        // Define fontes padrão se necessário (ex: sans-serif)
         fontFamily: 'sans-serif',
       ),
-      // O AuthWrapper decide qual será a primeira tela exibida
       home: const AuthWrapper(),
     );
   }
 }
 
-// --- AUTH WRAPPER (PORTEIRO) ---
-// Escuta em tempo real se o usuário está logado ou não
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -57,8 +58,6 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        
-        // Exibe indicador de carregamento enquanto verifica a sessão
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
@@ -67,12 +66,10 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // Caso exista um usuário na sessão do Firebase -> Vai para Home
         if (snapshot.hasData) {
           return const HomeScreen();
         }
 
-        // Caso contrário -> Vai para a tela de introdução (Onboarding)
         return const OnboardingScreen();
       },
     );

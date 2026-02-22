@@ -9,6 +9,8 @@ import 'profile_screen.dart';
 import 'certificates_screen.dart';
 import 'all_events_screen.dart';
 import 'search_screen.dart';
+import '../servicos/notificacao_servico.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _carregarUsuario();
+    NotificacaoServico.listarAgendamentos();
   }
 
   // Carrega dados básicos do usuário logado e valida se é organizador UFOP

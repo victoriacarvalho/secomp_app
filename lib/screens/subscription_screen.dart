@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../servicos/notificacao_servico.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   final String eventTitle;
@@ -49,8 +50,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
         var eventData = eventSnapshot.data() as Map<String, dynamic>;
         
-        // --- CORREÇÃO CRÍTICA AQUI ---
-        // Pegamos o UID de quem criou o evento para salvar dentro da inscrição
+        // Dados para as notificações
+        DateTime dataEvento = (eventData['data'] as Timestamp).toDate();
         String organizadorId = eventData['organizadorUid'] ?? ""; 
 
         int vagasAtuais = (eventData['vagas'] is int)
@@ -67,7 +68,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           'eventId': widget.eventId,
           'eventTitle': widget.eventTitle,
           'uidParticipante': user.uid,
-          'organizadorUid': organizadorId, // Agora o Firebase saberá quem pode confirmar a presença
+          'organizadorUid': organizadorId,
           'nomeUsuario': _nomeController.text.trim(),
           'emailUsuario': _emailController.text.trim(),
           'matricula': _matriculaController.text.trim(),
@@ -80,10 +81,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           'vagas': FieldValue.increment(-1),
           'numeroInscritos': FieldValue.increment(1),
         });
+
+        // --- AGENDAMENTO DE NOTIFICAÇÕES AUTOMÁTICAS ---
+        await NotificacaoServico.agendarNotificacoesEvento(
+          idBase: widget.eventId.hashCode,
+          titulo: widget.eventTitle,
+          dataEvento: dataEvento,
+        );
       });
 
       if (!mounted) return;
       setState(() => _isLoading = false);
+      
+      // Feedback de sucesso
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Inscrição realizada e lembretes agendados!"), backgroundColor: Colors.green),
+      );
+      
       Navigator.pop(context, true);
 
     } catch (e) {
@@ -91,6 +105,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       setState(() => _isLoading = false);
       _showError(e.toString().replaceAll("Exception: ", ""));
     }
+
+    await NotificacaoServico.listarAgendamentos();
   }
 
   void _showError(String msg) {
@@ -128,13 +144,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Evento: ${widget.eventTitle}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text("Inscrever-se em: ${widget.eventTitle}", 
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 30),
               _buildTextField(_nomeController, "Nome Completo", Icons.person),
               const SizedBox(height: 15),
               _buildTextField(_emailController, "E-mail Institucional", Icons.email, isEmail: true),
               const SizedBox(height: 15),
-              _buildTextField(_matriculaController, "Matrícula (Ex: 20.1.0000)", Icons.badge, isNumber: true),
+              _buildTextField(_matriculaController, "Matrícula", Icons.badge, isNumber: true),
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
